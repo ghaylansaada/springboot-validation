@@ -400,7 +400,7 @@ data class ApiError(
     val message: String?,
 
     // Additional error data (e.g., {"min": 5, "actual": 3})
-    val data: Map<String, Any?>?)
+    val data: Any?)
 ```
 
 The `location` property helps categorize errors by source:
@@ -409,6 +409,24 @@ The `location` property helps categorize errors by source:
 - `HEADER`: HTTP header errors
 - `PATH`: Path variable errors
 - `BUSINESS`: Business logic errors
+
+### Field Path Syntax
+
+The `field` property in `ApiError` represents the path to the invalid value within the request payload.  
+It uses **dot-and-bracket notation**, similar to JSONPath, and supports both object properties and array indices.
+
+#### Example
+
+| Field Path             | Meaning                                                |
+|------------------------|--------------------------------------------------------|
+| `field`                | Root object property                                   |
+| `field.field`          | Nested property inside an object                       |
+| `field[0]`             | First element of an array                              |
+| `field[0].field`       | Field inside the first array element                   |
+| `field[0][0][0].field` | Deeply nested array element with a field               |
+| `[0].field`            | Field inside the first element of a root-level array   |
+| `[0][0].field`         | Field inside nested arrays at the root level           |
+| `field[0]`             | First element of an array under a specific field       |
 
 ### Exception Handling
 
