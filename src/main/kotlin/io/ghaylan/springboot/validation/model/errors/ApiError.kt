@@ -1,5 +1,7 @@
 package io.ghaylan.springboot.validation.model.errors
 
+import io.swagger.v3.oas.annotations.media.Schema
+
 /**
  * Represents a validation error returned to the API caller.
  *
@@ -25,11 +27,45 @@ package io.ghaylan.springboot.validation.model.errors
  * @property location Location in the request where the invalid value originated.
  * @property data Optional additional context data for the error.
  */
+@Schema(name = "ApiError", description = "Detailed error entry for failed API responses.")
 data class ApiError(
+
+    @field:Schema(
+        description = "Fully qualified path of the invalid field relative to the request model. Null if the error is not tied to a specific parameter.",
+        nullable = true,
+        examples = [
+            "email",
+            "user.profile.firstName",
+            "orders[0].id",
+            "orders[0].items[2].productId",
+            "contacts[0].phones[1].number",
+            "metadata.tags[3]"])
     val field: String? = null,
+
+    @field:Schema(
+        description = "Classification of the error.",
+        nullable = true,
+        enumAsRef = true,
+        implementation = ApiErrorCode::class)
     val code: Enum<*>? = null,
+
+    @field:Schema(
+        description = "Localized, human-readable error message.",
+        example = "City is required",
+        nullable = true)
     var message: String? = null,
+
+    @field:Schema(
+        description = "Location in the request where the invalid value originated.",
+        nullable = true,
+        enumAsRef = true,
+        implementation = ErrorLocation::class)
     val location: ErrorLocation? = null,
+
+    @field:Schema(
+        description = "Optional additional context data for the error.",
+        example = """{ "minLength": 3, "maxLength": 50 }""",
+        nullable = true)
     val data : Any? = null)
 {
     /**
