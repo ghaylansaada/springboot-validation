@@ -32,7 +32,6 @@ import kotlin.reflect.jvm.javaType
  */
 object ReflectionUtils
 {
-    private val propertyNameRegex = Regex("[a-zA-Z_][a-zA-Z0-9_]*")
     private val primitiveArrayTypes = setOf(
         FloatArray::class,
         DoubleArray::class,

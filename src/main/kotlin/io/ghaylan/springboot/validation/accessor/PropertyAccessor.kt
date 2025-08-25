@@ -25,7 +25,8 @@ import java.lang.reflect.Field
  * ```
  */
 data class PropertyAccessor(
-    val name : String,
+    val realName : String,
+    val resolvedName : String,
     val handle : MethodHandle,
     val type : Class<*>)
 {

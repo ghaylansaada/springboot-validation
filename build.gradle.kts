@@ -23,7 +23,7 @@ repositories {
 dependencies {
     implementation("org.springframework:spring-aop:6.2.10")
 	implementation("org.springframework:spring-webflux:6.2.10")
-    implementation("org.springframework.boot:spring-boot-autoconfigure:3.5.4")
+    implementation("org.springframework.boot:spring-boot-autoconfigure:3.5.5")
     implementation("io.swagger.core.v3:swagger-annotations:2.2.36")
 
     // Kotlin support

@@ -22,7 +22,7 @@ import java.util.concurrent.ConcurrentHashMap
 object AccessorRegistry
 {
     /** Internal key: container class + field name. */
-    private data class Key(val clazz: Class<*>, val fieldName: String)
+    private data class Key(val clazz: Class<*>, val fieldRealName: String, val fieldResolvedName: String)
 
     /** Global cache: safe for concurrent read/write. */
     private val cache = ConcurrentHashMap<Key, FieldAccessor<*>>()
@@ -30,16 +30,17 @@ object AccessorRegistry
 
 
     /**
-     * Get (or build & cache) an accessor for [fieldName] on [containerClass].
+     * Get (or build & cache) an accessor for [fieldRealName] on [containerClass].
      */
     @Suppress("UNCHECKED_CAST")
     fun <T : Any> getOrCreate(
         containerClass : Class<T>,
-        fieldName : String
+        fieldRealName : String,
+        fieldResolvedName : String
     ) : FieldAccessor<T>
     {
-        return cache.computeIfAbsent(Key(containerClass, fieldName)) {
-            AccessorFactory.build(containerClass, fieldName)
+        return cache.computeIfAbsent(Key(containerClass, fieldRealName, fieldResolvedName)) {
+            AccessorFactory.build(containerClass, fieldRealName)
         } as FieldAccessor<T>
     }
 

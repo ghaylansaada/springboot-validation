@@ -824,9 +824,9 @@ open class ValidatorEngine(val validationRegistry : ValidationRegistry)
             // Derive the field-scoped ValidationContext (updated name/path + contexts).
             val fieldCtx = context.copy(
                 // name of the current field
-                fieldName = field.name,
+                fieldName = field.resolvedName,
                 // full path (parent.path.fieldName)
-                fieldPath = appendPath(context.fieldPath, field.name),
+                fieldPath = appendPath(context.fieldPath, field.resolvedName),
                 type = field.typeInfo,
                 // parent context for cross-field rules
                 containerObject = objectValueCtx,
@@ -913,11 +913,11 @@ open class ValidatorEngine(val validationRegistry : ValidationRegistry)
         schema.forEach { (_, param) ->
 
             // Retrieve the runtime value for the parameter from the input map.
-            val value = params?.get(param.name)
+            val value = params?.get(param.resolvedName)
 
             // Create a new ValidationContext scoped to this parameter.
             // Note: fieldPath here is flat (no dots) since parameters are top-level.
-            val paramCtx = context.copy(fieldName = param.name, fieldPath = param.name)
+            val paramCtx = context.copy(fieldName = param.resolvedName, fieldPath = param.resolvedName)
 
             // Validate the parameter's overall value (could be scalar or entire collection).
             validateValue(

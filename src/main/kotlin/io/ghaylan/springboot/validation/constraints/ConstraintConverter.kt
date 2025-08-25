@@ -1,5 +1,7 @@
 package io.ghaylan.springboot.validation.constraints
 
+import io.ghaylan.springboot.validation.constraints.message.Message
+import io.ghaylan.springboot.validation.constraints.message.MessageMetadata
 import kotlin.reflect.KClass
 import kotlin.reflect.KClassifier
 import kotlin.reflect.KParameter
@@ -94,8 +96,8 @@ object ConstraintConverter
                     val mappedValues = value.map {
 
                         when (it) {
-                            is ErrorMessage -> {
-                                ErrorMessageMetadata(text = it.text, language = it.language, errorCode = it.errorCode)
+                            is Message -> {
+                                MessageMetadata(text = it.text, language = it.language)
                             }
                             is Annotation if ConstraintMetadata::class.java.isAssignableFrom(it.javaClass) -> it.convertToMetadata()
                             is Class<*> -> it.kotlin

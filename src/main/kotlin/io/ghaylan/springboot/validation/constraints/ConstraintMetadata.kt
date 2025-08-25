@@ -1,5 +1,6 @@
 package io.ghaylan.springboot.validation.constraints
 
+import io.ghaylan.springboot.validation.constraints.message.MessageMetadata
 import kotlin.reflect.KClass
 
 /**
@@ -20,7 +21,7 @@ abstract class ConstraintMetadata
 {
     abstract val groups: Set<KClass<*>>
 
-    abstract val messages : Set<ErrorMessageMetadata>
+    abstract val messages : Set<MessageMetadata>
 
     val appliesToContainer : Boolean = false
 }

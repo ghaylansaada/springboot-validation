@@ -67,12 +67,12 @@ abstract class ConstraintValidator<Value, Constraint : ConstraintMetadata>
      * 1. Exact language-country match (e.g., "en-US")
      * 2. Language-only match (e.g., "en")
      * 3. English fallback ("en")
-     * 4. Default message from the [error] pair
+     * 4. Default message from the initial [error]
      *
      * Language tags are normalized by replacing underscores with hyphens
      * and compared case-insensitively.
      *
-     * @param error A pair of error code and default message text.
+     * @param error Initial error object.
      * @param constraint The constraint metadata containing override messages.
      * @param context The validation context providing the target language.
      * @return The best matching localized message or the default error message.
@@ -93,9 +93,6 @@ abstract class ConstraintValidator<Value, Constraint : ConstraintMetadata>
         for (msg in constraint.messages)
         {
             anyMatch = msg.text
-
-            // Match error code or blank for generic overrides
-            if (msg.errorCode != error.code?.name && msg.errorCode.isNotBlank()) continue
 
             val msgLang = msg.language.normalizeLanguageTag()
             val msgLangShort = msgLang.extractLanguage()

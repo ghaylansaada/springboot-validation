@@ -84,9 +84,13 @@ data class RequestInputSchema(
      * - Reflective reading of the field value during validation using [accessor].
      * - Support for nested properties, allowing deep validation of JSON structures.
      * - Storage of all applicable constraints along with their resolved validator instances.
+     * - Dual naming:
+     *   - [realName] → the property’s original Kotlin name in source code.
+     *   - [resolvedName] → the effective name used in the HTTP request (from annotations).
      * - Type introspection via [typeInfo] enabling precise type-based validation decisions.
      *
-     * @property name The field name as used in the HTTP request (header name, query param key, path variable name, or JSON property).
+     * @property realName The property’s actual name in Kotlin source code.
+     * @property resolvedName The name exposed in the HTTP request (header key, query param, path variable, or JSON property).
      * @property typeInfo Detailed type information for this field, including generics and nullability.
      * @property accessor Reflective accessor to retrieve the field’s runtime value.
      * @property nested Nested child properties if this field represents a complex object; empty otherwise.
@@ -94,7 +98,8 @@ data class RequestInputSchema(
      *   - Validators are filtered dynamically based on active validation groups.
      */
     data class PropertySpec(
-        val name: String,
+        val realName: String,
+        val resolvedName: String,
         val typeInfo: TypeInfo,
         val accessor: FieldAccessor<*>,
         val nested: Map<String, PropertySpec>,

@@ -80,8 +80,6 @@ object CollectionUtils
      */
     fun normalizeList(value: Any?): List<Any>
     {
-
-
         return when (value)
         {
             null -> emptyList()

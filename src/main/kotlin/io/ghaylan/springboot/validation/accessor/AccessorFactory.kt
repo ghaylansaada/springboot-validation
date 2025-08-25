@@ -43,7 +43,7 @@ object AccessorFactory
      */
     fun <T : Any> build(
         containerClass: Class<T>,
-        fieldName: String
+        fieldName: String,
     ): FieldAccessor<T>
     {
         // Map container? (fast exit; do NOT attempt bean/field resolution on raw maps.)
@@ -80,7 +80,7 @@ object AccessorFactory
      */
     private fun <T : Any> buildMapAccessorIfApplicable(
         containerClass: Class<T>,
-        fieldName: String
+        fieldName: String,
     ) : FieldAccessor<T>?
     {
         if (!ReflectionUtils.isMapLike(containerClass)) return null
@@ -96,7 +96,9 @@ object AccessorFactory
                 // Fast path: exact String key
                 if (map.containsKey(fieldName)) return map[fieldName]
                 // Fallback: tolerant toString compare (enum, int keys)
-                val match = map.entries.firstOrNull { it.key?.toString() == fieldName }
+                val match = map.entries.firstOrNull {
+                    it.key?.toString() == fieldName
+                }
                 return match?.value
             }
         }

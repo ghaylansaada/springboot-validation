@@ -1,5 +1,6 @@
 package io.ghaylan.springboot.validation.accessor
 
+import io.ghaylan.springboot.validation.ext.bodyFieldName
 import java.lang.invoke.MethodHandles
 import java.lang.reflect.Field
 
@@ -31,5 +32,9 @@ fun Field.buildFieldAccessor() : PropertyAccessor
     // Convert the reflective field into a direct MethodHandle for fast access.
     val handle = lookup.unreflectGetter(this)
 
-    return PropertyAccessor(this.name, handle, this.type)
+    return PropertyAccessor(
+        realName = this.name,
+        resolvedName = this.bodyFieldName(),
+        handle = handle,
+        type = this.type)
 }

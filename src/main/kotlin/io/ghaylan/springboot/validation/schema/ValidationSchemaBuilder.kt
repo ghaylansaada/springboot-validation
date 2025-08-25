@@ -8,8 +8,9 @@ import io.ghaylan.springboot.validation.constraints.Constraint
 import io.ghaylan.springboot.validation.constraints.ConstraintConverter.convertToMetadata
 import io.ghaylan.springboot.validation.constraints.ConstraintValidator
 import io.ghaylan.springboot.validation.utils.ValidatedMethodFinder
-import io.ghaylan.springboot.validation.constraints.array.distinct.DistinctConstraint
-import io.ghaylan.springboot.validation.constraints.required.RequiredConstraint
+import io.ghaylan.springboot.validation.constraints.validators.array.distinct.DistinctConstraint
+import io.ghaylan.springboot.validation.constraints.validators.required.RequiredConstraint
+import io.ghaylan.springboot.validation.ext.bodyFieldName
 import io.ghaylan.springboot.validation.integration.ValidateInput
 import io.ghaylan.springboot.validation.schema.RequestInputSchema.PropertySpec
 import io.ghaylan.springboot.validation.schema.RequestInputSchema.ValidationConfig
@@ -227,16 +228,17 @@ object ValidationSchemaBuilder
             .filter { it.isAnnotationPresent(annotationClass.java) }
             .associate { param ->
                 val type = ReflectionUtils.infoFromParameter(param)
-                val name = nameResolver.invoke(param)
-                name to PropertySpec(
-                    name = name,
+                val resolvedName = nameResolver.invoke(param)
+                resolvedName to PropertySpec(
+                    realName = param.name,
+                    resolvedName = resolvedName,
                     typeInfo = type,
                     constraints = filterConstraints(
                         valueType = type,
                         annotations = param.annotations,
                         allValidators = allValidators),
                     nested = emptyMap(),
-                    accessor = AccessorRegistry.getOrCreate(Map::class.java, name))
+                    accessor = AccessorRegistry.getOrCreate(Map::class.java, fieldRealName = param.name, fieldResolvedName = resolvedName))
             }
     }
 
@@ -314,6 +316,8 @@ object ValidationSchemaBuilder
             .filterNot { Modifier.isTransient(it.modifiers) }
             .associate { field ->
 
+                val resolvedName = field.bodyFieldName()
+
                 // Obtain the TypeInfo for this field
                 val type = ReflectionUtils.infoFromField(field)
 
@@ -337,14 +341,15 @@ object ValidationSchemaBuilder
                 // Merge any parent-level constraints that apply to this field
                 val localParentConstraints = parentConstraints.filter {
                     val constraint = it.key
-                    constraint is DistinctConstraint && constraint.by.contains(field.name)
+                    constraint is DistinctConstraint && constraint.by.contains(resolvedName)
                 }
 
-                field.name to PropertySpec(
-                    name = field.name,
+                resolvedName to PropertySpec(
+                    realName = field.name,
+                    resolvedName = resolvedName,
                     typeInfo = type,
                     constraints = localParentConstraints + constraints,
-                    accessor = AccessorRegistry.getOrCreate(clazz, field.name),
+                    accessor = AccessorRegistry.getOrCreate(clazz, fieldRealName = field.name, fieldResolvedName = resolvedName),
                     nested = nested)
             }
     }

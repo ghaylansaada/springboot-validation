@@ -17,35 +17,35 @@ import kotlin.reflect.KClass
  * @param other The temporal instance to compare against.
  * @return `true` if this temporal is before [other], `false` otherwise.
  */
-fun Temporal.isBefore(b: Temporal): Boolean = compareTemporal(this, b) < 0
+fun Temporal.isBefore(other: Temporal): Boolean = compareTemporal(this, other) < 0
 
 /**
  * Compares this [Temporal] to another [Temporal] to check if it occurs after the other.
  *
  * @return `true` if this temporal is after [other], `false` otherwise.
  */
-fun Temporal.isAfter(b: Temporal): Boolean = compareTemporal(this, b) > 0
+fun Temporal.isAfter(other: Temporal): Boolean = compareTemporal(this, other) > 0
 
 /**
  * Compares this [Temporal] to another [Temporal] to check if they are equal.
  *
  * @return `true` if this temporal is equal to [other], `false` otherwise.
  */
-fun Temporal.isEqual(b: Temporal): Boolean = compareTemporal(this, b) == 0
+fun Temporal.isEqual(other: Temporal): Boolean = compareTemporal(this, other) == 0
 
 /**
  * Checks if this [Temporal] is before or equal to another [Temporal].
  *
  * @return `true` if this temporal is before or equal to [other], `false` otherwise.
  */
-fun Temporal.isBeforeOrEqual(b: Temporal): Boolean = compareTemporal(this, b) <= 0
+fun Temporal.isBeforeOrEqual(other: Temporal): Boolean = compareTemporal(this, other) <= 0
 
 /**
  * Checks if this [Temporal] is after or equal to another [Temporal].
  *
  * @return `true` if this temporal is after or equal to [other], `false` otherwise.
  */
-fun Temporal.isAfterOrEqual(b: Temporal): Boolean = compareTemporal(this, b) >= 0
+fun Temporal.isAfterOrEqual(other: Temporal): Boolean = compareTemporal(this, other) >= 0
 
 
 /**
