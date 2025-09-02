@@ -41,7 +41,14 @@ kotlin {
 	compilerOptions {
 		javaParameters = true
 		jvmTarget.set(JvmTarget.JVM_21)
-		freeCompilerArgs.addAll("-Xjsr305=strict", "-opt-in=kotlin.RequiresOptIn", "-Xannotation-default-target=param-property")
+		freeCompilerArgs.addAll(
+            "-Xjsr305=strict",                       // strict nullability interop
+            "-java-parameters",                      // keep param names for Spring
+            "-Xjvm-default=all",                     // faster, cleaner proxies
+            "-Xemit-jvm-type-annotations",           // better interop for frameworks
+            "-opt-in=kotlin.RequiresOptIn",          // allow experimental APIs
+            "-Xstring-concat=indy-with-constants",   // best string concat on JDK 21
+            "-Xannotation-default-target=param-property")
 	}
 }
 
