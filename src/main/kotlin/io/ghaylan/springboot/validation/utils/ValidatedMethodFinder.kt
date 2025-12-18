@@ -1,6 +1,7 @@
 package io.ghaylan.springboot.validation.utils
 
 import io.ghaylan.springboot.validation.integration.ValidateInput
+import org.springframework.beans.factory.getBean
 import org.springframework.context.ApplicationContext
 import org.springframework.web.reactive.result.method.annotation.RequestMappingHandlerMapping
 import java.lang.reflect.Method
@@ -48,7 +49,7 @@ object ValidatedMethodFinder
         appContext : ApplicationContext,
     ): Map<Method, ValidateInput>
     {
-        val handlerMapping: RequestMappingHandlerMapping = appContext.getBean("requestMappingHandlerMapping", RequestMappingHandlerMapping::class.java)
+        val handlerMapping: RequestMappingHandlerMapping = appContext.getBean<RequestMappingHandlerMapping>("requestMappingHandlerMapping")
 
         val result = HashMap<Method, ValidateInput>(handlerMapping.handlerMethods.size)
 

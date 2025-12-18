@@ -1,8 +1,9 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmDefaultMode
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     id("io.spring.dependency-management") version "1.1.7"
-	kotlin("jvm") version "2.2.21"
+	kotlin("jvm") version "2.3.0"
 	`maven-publish`
 	`java-library`
 }
@@ -12,7 +13,7 @@ version = "1.0.0"
 
 java {
 	toolchain {
-		languageVersion = JavaLanguageVersion.of(21)
+		languageVersion = JavaLanguageVersion.of(25)
 	}
 }
 
@@ -45,20 +46,18 @@ dependencies {
     // Utilities
     implementation("org.jsoup:jsoup:1.21.2")
     implementation("org.aspectj:aspectjweaver:1.9.25")
-    implementation("com.googlecode.libphonenumber:libphonenumber:9.0.19")
+    implementation("com.googlecode.libphonenumber:libphonenumber:9.0.21")
 }
 
 kotlin {
 	compilerOptions {
 		javaParameters = true
-		jvmTarget.set(JvmTarget.JVM_21)
-		freeCompilerArgs.addAll(
-            "-Xjsr305=strict",           // strict nullability interop
-            "-Xjvm-default=all",                     // faster, cleaner proxies
-            "-Xemit-jvm-type-annotations",           // better interop for frameworks
-            "-opt-in=kotlin.RequiresOptIn",          // allow experimental APIs
-            "-Xstring-concat=indy-with-constants",   // best string concat on JDK 21
-            "-Xannotation-default-target=param-property")
+		jvmTarget.set(JvmTarget.JVM_25)
+        jvmDefault.set(JvmDefaultMode.NO_COMPATIBILITY)
+        freeCompilerArgs.add("-Xjsr305=strict")                             // strict nullability interop
+        freeCompilerArgs.add("-Xemit-jvm-type-annotations")                 // better interop for frameworks
+        freeCompilerArgs.add("-Xstring-concat=indy-with-constants")         // allow experimental APIs
+        freeCompilerArgs.add("-Xannotation-default-target=param-property")  // best string concat on JDK 25
 	}
 }
 

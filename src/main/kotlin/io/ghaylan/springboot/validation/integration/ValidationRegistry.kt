@@ -1,5 +1,6 @@
 package io.ghaylan.springboot.validation.integration
 
+import io.ghaylan.springboot.validation.constraints.Constraint
 import io.ghaylan.springboot.validation.utils.ReflectionUtils
 import io.ghaylan.springboot.validation.utils.ReflectionUtils.TypeInfo
 import io.ghaylan.springboot.validation.constraints.ConstraintMetadata

@@ -2,6 +2,7 @@ package io.ghaylan.springboot.validation.utils
 
 import org.springframework.aop.support.AopUtils
 import org.springframework.beans.factory.config.AutowireCapableBeanFactory
+import org.springframework.beans.factory.getBeansWithAnnotation
 import org.springframework.boot.SpringBootConfiguration
 import org.springframework.boot.autoconfigure.AutoConfigurationPackages
 import org.springframework.context.ApplicationContext
@@ -10,7 +11,6 @@ import kotlin.collections.distinct
 import kotlin.collections.map
 import kotlin.collections.mapNotNull
 import kotlin.collections.plusAssign
-import kotlin.jvm.java
 import kotlin.text.isNotEmpty
 import kotlin.text.split
 import kotlin.text.trim
@@ -96,7 +96,7 @@ object SpringBootUtils
      */
     private fun trySpringBootConfigurationBeans(ctx : ApplicationContext): List<String>
     {
-        return ctx.getBeansWithAnnotation(SpringBootConfiguration::class.java).values
+        return ctx.getBeansWithAnnotation<SpringBootConfiguration>().values
             .map { AopUtils.getTargetClass(it) }
             .map { it.packageName }
             .distinct()

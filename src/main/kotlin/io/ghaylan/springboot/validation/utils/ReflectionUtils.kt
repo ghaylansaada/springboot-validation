@@ -112,6 +112,7 @@ object ReflectionUtils
      * @param type The Java class to check.
      * @return `true` if the type is a map or subclass of map.
      */
+    @Suppress("PLATFORM_CLASS_MAPPED_TO_KOTLIN")
     fun isMapLike(type : Class<*>) : Boolean
     {
         return java.util.Map::class.java.isAssignableFrom(type)

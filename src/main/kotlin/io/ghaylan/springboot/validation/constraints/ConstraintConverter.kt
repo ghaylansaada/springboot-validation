@@ -4,6 +4,7 @@ import io.ghaylan.springboot.validation.constraints.message.Message
 import io.ghaylan.springboot.validation.constraints.message.MessageMetadata
 import kotlin.reflect.KClass
 import kotlin.reflect.KClassifier
+import kotlin.reflect.KMutableProperty1
 import kotlin.reflect.KParameter
 import kotlin.reflect.KProperty1
 import kotlin.reflect.jvm.jvmName
@@ -141,7 +142,7 @@ object ConstraintConverter
         runCatching {
             val appliesToContainerKey = ConstraintMetadata::appliesToContainer.name
             val appliesToContainerProp = metadataClass.members
-                .filterIsInstance<kotlin.reflect.KMutableProperty1<Any, Any?>>()
+                .filterIsInstance<KMutableProperty1<Any, Any?>>()
                 .firstOrNull { it.name == appliesToContainerKey }
             appliesToContainerProp?.set(instance, constraintAnn.appliesToContainer)
         }.getOrNull()
