@@ -4,7 +4,7 @@ import io.ghaylan.springboot.validation.constraints.Constraint
 import io.ghaylan.springboot.validation.constraints.message.Message
 import io.ghaylan.springboot.validation.constraints.validators.required.RequiredConstraint
 import io.ghaylan.springboot.validation.constraints.validators.required.RequiredValidator
-import io.ghaylan.springboot.validation.groups.DefaultGroup
+import io.ghaylan.springboot.validation.groups.OnDefault
 import kotlin.reflect.KClass
 
 /**
@@ -56,7 +56,7 @@ import kotlin.reflect.KClass
  * @property groups Specifies the validation groups this constraint belongs to.
  *                  Validation groups enable selective validation by grouping constraints,
  *                  allowing the constraint to be applied only during validation runs targeting those groups.
- *                  Defaults to the `DefaultGroup` if none are specified.
+ *                  Defaults to the `OnDefault` if none are specified.
  * @property messages Optional array of [Message] annotations for overriding
  *                   default error messages with localized, error-code-specific messages.
  */
@@ -66,24 +66,25 @@ import kotlin.reflect.KClass
 @Retention(AnnotationRetention.RUNTIME)
 @Target(AnnotationTarget.FIELD, AnnotationTarget.VALUE_PARAMETER)
 annotation class Required(
-    val dependentField : String = "",
-    val condition : RequirementCondition = RequirementCondition.ALWAYS,
-    val groups: Array<KClass<*>> = [DefaultGroup::class],
-    val messages : Array<Message> = [])
-{
-    /**
-     * Used within the `@Required` annotation to determine whether the annotated value should be validated
-     * based on the state of other sibling fields or always.
-     */
-    enum class RequirementCondition
-    {
-        /** The annotated field is always required, regardless of any other fields. */
-        ALWAYS,
-
-        /** The annotated field is required **only if `dependentField` is `null`. */
-        IF_DEPENDENT_NULL,
-
-        /** The annotated field is required **only `dependentField` is **not null**. */
-        IF_DEPENDENT_NOT_NULL,
-    }
+	val dependentField: String = "",
+	val condition: RequirementCondition = RequirementCondition.ALWAYS,
+	val groups: Array<KClass<*>> = [OnDefault::class],
+	val messages: Array<Message> = []
+) {
+	
+	/**
+	 * Used within the `@Required` annotation to determine whether the annotated value should be validated
+	 * based on the state of other sibling fields or always.
+	 */
+	enum class RequirementCondition {
+		
+		/** The annotated field is always required, regardless of any other fields. */
+		ALWAYS,
+		
+		/** The annotated field is required **only if `dependentField` is `null`. */
+		IF_DEPENDENT_NULL,
+		
+		/** The annotated field is required **only `dependentField` is **not null**. */
+		IF_DEPENDENT_NOT_NULL,
+	}
 }

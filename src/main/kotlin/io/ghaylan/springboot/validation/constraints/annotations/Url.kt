@@ -4,7 +4,7 @@ import io.ghaylan.springboot.validation.constraints.Constraint
 import io.ghaylan.springboot.validation.constraints.message.Message
 import io.ghaylan.springboot.validation.constraints.validators.string.url.UrlConstraint
 import io.ghaylan.springboot.validation.constraints.validators.string.url.UrlValidator
-import io.ghaylan.springboot.validation.groups.DefaultGroup
+import io.ghaylan.springboot.validation.groups.OnDefault
 import kotlin.reflect.KClass
 
 /**
@@ -82,7 +82,7 @@ import kotlin.reflect.KClass
  * @property groups Specifies the validation groups this constraint belongs to.
  *                  Validation groups enable selective validation by grouping constraints,
  *                  allowing the constraint to be applied only during validation runs targeting those groups.
- *                  Defaults to the `DefaultGroup` if none are specified.
+ *                  Defaults to the `OnDefault` if none are specified.
  * @property messages Optional array of [Message] annotations for overriding
  *                   default error messages with localized, error-code-specific messages.
  */
@@ -91,22 +91,25 @@ import kotlin.reflect.KClass
 @Retention(AnnotationRetention.RUNTIME)
 @Target(AnnotationTarget.FIELD, AnnotationTarget.VALUE_PARAMETER)
 annotation class Url(
-    val type : UrlType = UrlType.GENERIC,
-    val requireHttps : Boolean = false,
-    val allowQueryParams : Boolean = true,
-    val allowedExtensions : Array<String> = [],
-    val groups: Array<KClass<*>> = [DefaultGroup::class],
-    val messages : Array<Message> = [])
-{
-
+	val type: UrlType = UrlType.GENERIC,
+	val requireHttps: Boolean = false,
+	val allowQueryParams: Boolean = true,
+	val allowedExtensions: Array<String> = [],
+	val groups: Array<KClass<*>> = [OnDefault::class],
+	val messages: Array<Message> = []
+) {
+	
 	/**
 	 * Defines types of URL categories for validation context.
 	 *
 	 * @property isMedia Indicates whether this type typically represents downloadable or embedded media.
 	 * @property extensions Default list of file extensions typically associated with this category.
 	 */
-	enum class UrlType(val isMedia : Boolean, val extensions : Array<String>)
-	{
+	enum class UrlType(
+		val isMedia: Boolean,
+		val extensions: Array<String>
+	) {
+		
 		GENERIC(false, emptyArray()),  // Any valid URL
 		WEBSITE(false, emptyArray()),  // Must start with HTTP(S) and contain a domain
 		FILE(true, arrayOf("pdf", "zip", "rar", "tar", "exe", "doc", "docx", "ppt", "pptx", "xls", "xlsx")),

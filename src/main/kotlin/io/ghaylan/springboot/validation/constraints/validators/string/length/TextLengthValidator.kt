@@ -6,22 +6,22 @@ import io.ghaylan.springboot.validation.model.errors.ApiError
 import io.ghaylan.springboot.validation.model.errors.ApiErrorCode
 
 
-object TextLengthValidator : ConstraintValidator<CharSequence, TextLengthConstraint>()
-{
-
-    override suspend fun validate(
-        value: CharSequence?,
-        constraint: TextLengthConstraint,
-        context: ValidationContext
-    ) : ApiError?
-    {
-        value ?: return null
-
-        if (value.length in constraint.min..constraint.max) return null
-
-        return ApiError(code = ApiErrorCode.STRING_LENGTH_VIOLATION, message = "Text must contain between ${constraint.min} and ${constraint.max} characters")
-    }
-
-
-    override fun applicableErrorCodes(): Array<ApiErrorCode> = arrayOf(ApiErrorCode.STRING_LENGTH_VIOLATION)
+object TextLengthValidator: ConstraintValidator<CharSequence, TextLengthConstraint>() {
+	
+	override suspend fun validate(
+		value: CharSequence?,
+		constraint: TextLengthConstraint,
+		context: ValidationContext
+	): ApiError? {
+		value
+			?: return null
+		
+		if (value.length in constraint.min..constraint.max) return null
+		
+		return ApiError(code = ApiErrorCode.STRING_LENGTH_VIOLATION,
+			message = "Text must contain between ${constraint.min} and ${constraint.max} characters")
+	}
+	
+	
+	override fun applicableErrorCodes(): Array<ApiErrorCode> = arrayOf(ApiErrorCode.STRING_LENGTH_VIOLATION)
 }

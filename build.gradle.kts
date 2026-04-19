@@ -3,7 +3,7 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     id("io.spring.dependency-management") version "1.1.7"
-	kotlin("jvm") version "2.3.0"
+	kotlin("jvm") version "2.3.20"
 	`maven-publish`
 	`java-library`
 }
@@ -24,7 +24,7 @@ repositories {
 
 dependencies {
     // Import Spring Boot's dependency versions (BOM)
-    implementation(platform("org.springframework.boot:spring-boot-dependencies:4.0.0"))
+	implementation(platform("org.springframework.boot:spring-boot-dependencies:4.0.5"))
 
     // Spring modules
     implementation("org.springframework:spring-aop")
@@ -35,7 +35,7 @@ dependencies {
     implementation("com.fasterxml.jackson.core:jackson-databind")
 
     // Swagger
-    implementation("io.swagger.core.v3:swagger-annotations:2.2.41")
+	implementation("io.swagger.core.v3:swagger-annotations:2.2.48")
 
     // Kotlin libraries
     implementation("org.jetbrains.kotlin:kotlin-reflect")
@@ -44,9 +44,9 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactor")
 
     // Utilities
-    implementation("org.jsoup:jsoup:1.21.2")
-    implementation("org.aspectj:aspectjweaver:1.9.25")
-    implementation("com.googlecode.libphonenumber:libphonenumber:9.0.21")
+	implementation("org.jsoup:jsoup:1.22.1")
+	implementation("org.aspectj:aspectjweaver:1.9.25.1")
+	implementation("com.googlecode.libphonenumber:libphonenumber:9.0.28")
 }
 
 kotlin {

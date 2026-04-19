@@ -6,22 +6,22 @@ import io.ghaylan.springboot.validation.model.errors.ApiError
 import io.ghaylan.springboot.validation.model.errors.ApiErrorCode
 
 
-object MapSizeValidator : ConstraintValidator<Map<*,*>, MapSizeConstraint>()
-{
-
-    override suspend fun validate(
-        value: Map<*, *>?,
-        constraint: MapSizeConstraint,
-        context: ValidationContext
-    ) : ApiError?
-    {
-        value ?: return null
-
-        if (value.size in constraint.min..constraint.max) return null
-
-        return ApiError(code = ApiErrorCode.OBJECT_SIZE_VIOLATION, message = "Object must contain between ${constraint.min} and ${constraint.max} key-value pairs")
-    }
-
-
-    override fun applicableErrorCodes(): Array<ApiErrorCode> = arrayOf(ApiErrorCode.OBJECT_SIZE_VIOLATION)
+object MapSizeValidator: ConstraintValidator<Map<*, *>, MapSizeConstraint>() {
+	
+	override suspend fun validate(
+		value: Map<*, *>?,
+		constraint: MapSizeConstraint,
+		context: ValidationContext
+	): ApiError? {
+		value
+			?: return null
+		
+		if (value.size in constraint.min..constraint.max) return null
+		
+		return ApiError(code = ApiErrorCode.OBJECT_SIZE_VIOLATION,
+			message = "Object must contain between ${constraint.min} and ${constraint.max} key-value pairs")
+	}
+	
+	
+	override fun applicableErrorCodes(): Array<ApiErrorCode> = arrayOf(ApiErrorCode.OBJECT_SIZE_VIOLATION)
 }

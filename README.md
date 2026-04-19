@@ -1,10 +1,12 @@
 # Spring Boot Schema-Based Validation
 
-A high-performance, schema-based validation framework for Spring Boot applications that provides superior flexibility, performance, and developer experience compared to standard Bean Validation (JSR-380).
+A high-performance, schema-based validation framework for Spring Boot applications that provides superior flexibility,
+performance, and developer experience compared to standard Bean Validation (JSR-380).
 
 ## Overview
 
-This library is a complete validation solution for Spring Boot applications that improves upon the built-in validation mechanisms in several key ways:
+This library is a complete validation solution for Spring Boot applications that improves upon the built-in validation
+mechanisms in several key ways:
 
 - **Schema-based**: Generates optimized validation schemas at startup or runtime
 - **High-performance**: Precomputes field accessors and avoids reflection in the hot path
@@ -15,7 +17,8 @@ This library is a complete validation solution for Spring Boot applications that
 
 Perfect for applications with complex validation requirements, high performance needs, or API-first designs.
 
-> **Note**: Currently, this framework is coroutine-first and primarily designed for Kotlin coroutines with Spring WebFlux. It also supports Spring WebFlux without coroutines, but traditional Spring WebMVC is not supported.
+> **Note**: Currently, this framework is coroutine-first and primarily designed for Kotlin coroutines with Spring
+> WebFlux. It also supports Spring WebFlux without coroutines, but traditional Spring WebMVC is not supported.
 
 ## Table of Contents
 
@@ -44,7 +47,9 @@ Perfect for applications with complex validation requirements, high performance 
 
 ## How It Works
 
-The validation framework operates through a series of steps that span from application startup to runtime request handling. The core principle is to perform all expensive operations (reflection, annotation processing) at startup and use cached components during request validation for optimal performance.
+The validation framework operates through a series of steps that span from application startup to runtime request
+handling. The core principle is to perform all expensive operations (reflection, annotation processing) at startup and
+use cached components during request validation for optimal performance.
 
 ### Startup Process: Caching Validators
 
@@ -63,7 +68,8 @@ When the application starts:
     - The inner key is the value type the validator can handle
     - The value is the validator instance itself
 
-This creates an optimized lookup system that can quickly match a constraint with the appropriate validator for any given value type.
+This creates an optimized lookup system that can quickly match a constraint with the appropriate validator for any given
+value type.
 
 ### Startup Process: Building Request Schemas
 
@@ -87,7 +93,8 @@ After caching validators, the framework:
     - Validation configuration from the `@ValidateInput` annotation
 5. Registers the schema in `ValidationRegistry`, indexed by a unique request ID
 
-At this point, every endpoint has a complete validation schema with cached accessors, validators, and constraint metadata - all created without needing to access annotations or use reflection at runtime.
+At this point, every endpoint has a complete validation schema with cached accessors, validators, and constraint
+metadata - all created without needing to access annotations or use reflection at runtime.
 
 ### Runtime Validation Process
 
@@ -106,7 +113,9 @@ When a request comes in:
 6. If any errors are found, throws a `ConstraintViolationException` with all errors
 7. If validation passes, allows the controller method to execute normally
 
-This approach ensures validation is performed with minimal overhead, as all expensive operations were moved to the application startup phase. During actual request processing, the framework simply walks through pre-computed validation paths and applies pre-instantiated validators.
+This approach ensures validation is performed with minimal overhead, as all expensive operations were moved to the
+application startup phase. During actual request processing, the framework simply walks through pre-computed validation
+paths and applies pre-instantiated validators.
 
 ## Getting Started
 
@@ -156,7 +165,8 @@ annotation class ValidateInput(
     val validatePath: Boolean = true,        // Whether to validate path variables
     val validateHeaders: Boolean = true,     // Whether to validate request headers
     val singleErrorPerField: Boolean = true, // Stop after first error on a field
-    val groups: Array<KClass<*>> = [DefaultGroup::class]) // Validation groups to apply
+    val groups: Array<KClass<*>> = [OnDefault::class]
+) // Validation groups to apply
 ```
 
 Example usage in a controller:
@@ -171,14 +181,13 @@ class UserController(private val userService: UserService) {
         validateBody = true,
         validateQuery = true,
         validateHeaders = false,
-        singleErrorPerField = true,
-        groups = [CreateGroup::class])
+        singleErrorPerField = true, groups = [OnCreate::class])
     suspend fun createUser(@RequestBody user: UserDTO): UserDTO {
         return userService.createUser(user)
     }
 
     @PutMapping("/{id}")
-    @ValidateInput(groups = [UpdateGroup::class])
+    @ValidateInput(groups = [OnUpdate::class])
     suspend fun updateUser(
         @PathVariable id: Long,
         @RequestBody user: UserDTO
@@ -195,24 +204,25 @@ Validation groups allow you to apply different validation rules depending on the
 ```kotlin
 data class UserDTO(
     // Applied in both create and update
-    @Required(groups = [CreateGroup::class, UpdateGroup::class])
+	@Required(groups = [OnCreate::class, OnUpdate::class])
     val id: Long?,
 
     // Only required when creating
-    @Required(groups = [CreateGroup::class])
-    @Email(groups = [CreateGroup::class, UpdateGroup::class])
+	@Required(groups = [OnCreate::class])
+	@Email(groups = [OnCreate::class, OnUpdate::class])
     val email: String?,
 
     // Required and validated only when creating
-    @Required(groups = [CreateGroup::class])
-    @StringLength(min = 8, max = 100, groups = [CreateGroup::class])
+	@Required(groups = [OnCreate::class])
+	@StringLength(min = 8, max = 100, groups = [OnCreate::class])
     val password: String?)
 ```
 
 Built-in groups:
-- `DefaultGroup`: Default group used when no group is specified
-- `CreateGroup`: Commonly used for creation operations
-- `UpdateGroup`: Commonly used for update operations
+
+- `OnDefault`: Default group used when no group is specified
+- `OnCreate`: Commonly used for creation operations
+- `OnUpdate`: Commonly used for update operations
 
 You can also create custom groups by defining marker interfaces:
 
@@ -234,8 +244,7 @@ class DynamicValidationService(private val validatorEngine: ValidatorEngine) {
         validatorEngine.validate(
             params = data,
             locale = locale,
-            singleErrorPerField = false,
-            groups = arrayOf(DefaultGroup::class))
+            singleErrorPerField = false, groups = arrayOf(OnDefault::class))
     }
 }
 ```
@@ -283,7 +292,7 @@ All constraints support these common properties:
 Validation groups control when constraints are applied:
 
 ```kotlin
-@field:Required(groups = [CreateGroup::class, UpdateGroup::class])
+@field:Required(groups = [OnCreate::class, OnUpdate::class])
 val name: String?
 ```
 
@@ -300,6 +309,7 @@ val email: String?
 ```
 
 Language codes can be specified as:
+
 - Language only: `"en"`, `"fr"`, `"de"`, etc.
 - Language with region: `"en-US"`, `"fr-CA"`, `"de-CH"`, etc.
 
@@ -311,69 +321,69 @@ The framework provides a rich set of built-in constraints:
 
 ### General Constraints
 
-| Constraint | Description |
-|------------|-------------|
+| Constraint  | Description                          |
+|-------------|--------------------------------------|
 | `@Required` | Ensures a value is not null or empty |
 
 ### String Constraints
 
-| Constraint | Description |
-|------------|-------------|
-| `@StringLength` | Validates string length is between min and max |
-| `@Email` | Validates string is a valid email address |
-| `@Regex` | Validates string matches a regular expression pattern |
-| `@StrOcc` | Validates string contains specific text |
-| `@Base64` | Validates string is valid Base64 encoded |
-| `@Url` | Validates string is a valid URL |
-| `@Uuid` | Validates string is a valid UUID |
-| `@HexColor` | Validates string is a valid hex color code |
-| `@Html` | Validates string contains valid HTML |
-| `@Iban` | Validates string is a valid IBAN |
-| `@ISOCountryCode` | Validates string is a valid ISO country code |
-| `@ISOLanguage` | Validates string is a valid ISO language code |
-| `@Phone` | Validates string is a valid phone number |
-| `@CreditCard` | Validates string is a valid credit card number |
-| `@Password` | Validates string meets password strength requirements |
+| Constraint        | Description                                           |
+|-------------------|-------------------------------------------------------|
+| `@StringLength`   | Validates string length is between min and max        |
+| `@Email`          | Validates string is a valid email address             |
+| `@Regex`          | Validates string matches a regular expression pattern |
+| `@StrOcc`         | Validates string contains specific text               |
+| `@Base64`         | Validates string is valid Base64 encoded              |
+| `@Url`            | Validates string is a valid URL                       |
+| `@Uuid`           | Validates string is a valid UUID                      |
+| `@HexColor`       | Validates string is a valid hex color code            |
+| `@Html`           | Validates string contains valid HTML                  |
+| `@Iban`           | Validates string is a valid IBAN                      |
+| `@ISOCountryCode` | Validates string is a valid ISO country code          |
+| `@ISOLanguage`    | Validates string is a valid ISO language code         |
+| `@Phone`          | Validates string is a valid phone number              |
+| `@CreditCard`     | Validates string is a valid credit card number        |
+| `@Password`       | Validates string meets password strength requirements |
 
 ### Number Constraints
 
-| Constraint | Description |
-|------------|-------------|
-| `@NumberMin` | Validates number is at least the specified minimum |
-| `@NumberMax` | Validates number is at most the specified maximum |
-| `@DivisibleBy` | Validates number is divisible by the specified value |
-| `@MultipleOf` | Validates number is a multiple of the specified value |
-| `@Latitude` | Validates number is a valid latitude (-90 to 90) |
-| `@Longitude` | Validates number is a valid longitude (-180 to 180) |
+| Constraint     | Description                                           |
+|----------------|-------------------------------------------------------|
+| `@NumberMin`   | Validates number is at least the specified minimum    |
+| `@NumberMax`   | Validates number is at most the specified maximum     |
+| `@DivisibleBy` | Validates number is divisible by the specified value  |
+| `@MultipleOf`  | Validates number is a multiple of the specified value |
+| `@Latitude`    | Validates number is a valid latitude (-90 to 90)      |
+| `@Longitude`   | Validates number is a valid longitude (-180 to 180)   |
 
 ### Comparison Constraints
 
-| Constraint | Description |
-|------------|-------------|
-| `@EqualTo` | Validates value equals specified value |
-| `@NotEqualTo` | Validates value does not equal specified value |
-| `@GreaterThan` | Validates value is greater than specified value |
-| `@LessThan` | Validates value is less than specified value |
-| `@ValueIn` | Validates value is in a set of allowed values |
-| `@ValueNotIn` | Validates value is not in a set of disallowed values |
+| Constraint     | Description                                          |
+|----------------|------------------------------------------------------|
+| `@EqualTo`     | Validates value equals specified value               |
+| `@NotEqualTo`  | Validates value does not equal specified value       |
+| `@GreaterThan` | Validates value is greater than specified value      |
+| `@LessThan`    | Validates value is less than specified value         |
+| `@ValueIn`     | Validates value is in a set of allowed values        |
+| `@ValueNotIn`  | Validates value is not in a set of disallowed values |
 
 ### Collection Constraints
 
-| Constraint | Description |
-|------------|-------------|
-| `@ArraySize` | Validates array/collection size is between min and max |
-| `@Distinct` | Validates array/collection has no duplicate elements |
-| `@MapSize` | Validates map has number of entries between min and max |
+| Constraint   | Description                                             |
+|--------------|---------------------------------------------------------|
+| `@ArraySize` | Validates array/collection size is between min and max  |
+| `@Distinct`  | Validates array/collection has no duplicate elements    |
+| `@MapSize`   | Validates map has number of entries between min and max |
 
 ### Temporal Constraints
 
-| Constraint | Description |
-|------------|-------------|
-| `@Past` | Validates date/time is in the past |
-| `@Future` | Validates date/time is in the future |
-| `@TemporalMin` | Validates date/time is after specified minimum |
+| Constraint     | Description                                     |
+|----------------|-------------------------------------------------|
+| `@Past`        | Validates date/time is in the past              |
+| `@Future`      | Validates date/time is in the future            |
+| `@TemporalMin` | Validates date/time is after specified minimum  |
 | `@TemporalMax` | Validates date/time is before specified maximum |
-| `@AllowedDays` | Validates date falls on allowed days of week |
+| `@AllowedDays` | Validates date falls on allowed days of week    |
 
 ## Error Handling
 
@@ -400,6 +410,7 @@ data class ApiError(
 ```
 
 The `location` property helps categorize errors by source:
+
 - `BODY`: Request body errors
 - `QUERY`: Query parameter errors
 - `HEADER`: HTTP header errors
@@ -413,22 +424,24 @@ It uses **dot-and-bracket notation**, similar to JSONPath, and supports both obj
 
 #### Example
 
-| Field Path             | Meaning                                                |
-|------------------------|--------------------------------------------------------|
-| `field`                | Root object property                                   |
-| `field.field`          | Nested property inside an object                       |
-| `field[0]`             | First element of an array                              |
-| `field[0].field`       | Field inside the first array element                   |
-| `field[0][0][0].field` | Deeply nested array element with a field               |
-| `[0].field`            | Field inside the first element of a root-level array   |
-| `[0][0].field`         | Field inside nested arrays at the root level           |
-| `field[0]`             | First element of an array under a specific field       |
+| Field Path             | Meaning                                              |
+|------------------------|------------------------------------------------------|
+| `field`                | Root object property                                 |
+| `field.field`          | Nested property inside an object                     |
+| `field[0]`             | First element of an array                            |
+| `field[0].field`       | Field inside the first array element                 |
+| `field[0][0][0].field` | Deeply nested array element with a field             |
+| `[0].field`            | Field inside the first element of a root-level array |
+| `[0][0].field`         | Field inside nested arrays at the root level         |
+| `field[0]`             | First element of an array under a specific field     |
 
 ### Exception Handling
 
-`ConstraintViolationException` is a runtime exception thrown when validation fails. It contains a list of `ApiError` objects.
+`ConstraintViolationException` is a runtime exception thrown when validation fails. It contains a list of `ApiError`
+objects.
 
-Since this is a runtime exception, you need to handle it in a custom exception handler to map it to your API response format:
+Since this is a runtime exception, you need to handle it in a custom exception handler to map it to your API response
+format:
 
 ```kotlin
 @RestControllerAdvice
@@ -497,7 +510,7 @@ collector.throwIfNotEmpty()
 @Retention(AnnotationRetention.RUNTIME)
 annotation class MyCustomConstraint(
     val customValue: String,
-    val groups: Array<KClass<*>> = [DefaultGroup::class],
+    val groups: Array<KClass<*>> = [OnDefault::class],
     val messages: Array<ErrorMessage> = [])
 ```
 
@@ -617,17 +630,17 @@ This validation framework is designed for high performance:
 
 ### Advantages over Spring Boot's Built-in Validation
 
-| Feature | This Framework | Standard Bean Validation |
-|---------|---------------|-------------------------|
-| **Performance** | Optimized field access, no runtime reflection | Relies on reflection for each validation |
-| **Schema Generation** | Pre-computed validation schemas | Schema discovery on each validation |
-| **Error Structure** | API-friendly, structured errors | Limited customization of error format |
-| **Dynamic Validation** | First-class support | Difficult to implement |
-| **Localization** | Built-in multi-language support | Requires custom MessageSource configuration |
-| **Validation Groups** | First-class support | Available but with limitations |
-| **Manual Error Collection** | Rich fluent API | Limited programmatic API |
-| **Extensibility** | Easy custom constraints | More complex extension model |
-| **WebFlux Support** | Native support for reactive & coroutines | Limited reactive integration |
+| Feature                     | This Framework                                | Standard Bean Validation                    |
+|-----------------------------|-----------------------------------------------|---------------------------------------------|
+| **Performance**             | Optimized field access, no runtime reflection | Relies on reflection for each validation    |
+| **Schema Generation**       | Pre-computed validation schemas               | Schema discovery on each validation         |
+| **Error Structure**         | API-friendly, structured errors               | Limited customization of error format       |
+| **Dynamic Validation**      | First-class support                           | Difficult to implement                      |
+| **Localization**            | Built-in multi-language support               | Requires custom MessageSource configuration |
+| **Validation Groups**       | First-class support                           | Available but with limitations              |
+| **Manual Error Collection** | Rich fluent API                               | Limited programmatic API                    |
+| **Extensibility**           | Easy custom constraints                       | More complex extension model                |
+| **WebFlux Support**         | Native support for reactive & coroutines      | Limited reactive integration                |
 
 ### When to Use This Framework
 

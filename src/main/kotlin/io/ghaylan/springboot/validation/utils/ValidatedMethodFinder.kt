@@ -5,7 +5,6 @@ import org.springframework.beans.factory.getBean
 import org.springframework.context.ApplicationContext
 import org.springframework.web.reactive.result.method.annotation.RequestMappingHandlerMapping
 import java.lang.reflect.Method
-import kotlin.jvm.java
 
 /**
  * Utility for discovering controller methods annotated with [ValidateInput].
@@ -32,31 +31,29 @@ import kotlin.jvm.java
  * }
  * ```
  */
-object ValidatedMethodFinder
-{
-
-    /**
-     * Finds all controller methods annotated with [ValidateInput].
-     *
-     * @param appContext Spring application context containing WebFlux configuration
-     * @return Map of controller [Method] to its [ValidateInput] annotation
-     *
-     * ### Notes
-     * - Only methods in request-mapped controllers are scanned.
-     * - Methods without [ValidateInput] are ignored.
-     */
-    fun find(
-        appContext : ApplicationContext,
-    ): Map<Method, ValidateInput>
-    {
-        val handlerMapping: RequestMappingHandlerMapping = appContext.getBean<RequestMappingHandlerMapping>("requestMappingHandlerMapping")
-
-        val result = HashMap<Method, ValidateInput>(handlerMapping.handlerMethods.size)
-
-        for (handlerMethod in handlerMapping.handlerMethods.values) {
-            result[handlerMethod.method] = handlerMethod.method.getAnnotation(ValidateInput::class.java) ?: continue
-        }
-
-        return result
-    }
+object ValidatedMethodFinder {
+	
+	/**
+	 * Finds all controller methods annotated with [ValidateInput].
+	 *
+	 * @param appContext Spring application context containing WebFlux configuration
+	 * @return Map of controller [Method] to its [ValidateInput] annotation
+	 *
+	 * ### Notes
+	 * - Only methods in request-mapped controllers are scanned.
+	 * - Methods without [ValidateInput] are ignored.
+	 */
+	fun find(
+		appContext: ApplicationContext,
+	): Map<Method, ValidateInput> {
+		val handlerMapping: RequestMappingHandlerMapping = appContext.getBean<RequestMappingHandlerMapping>("requestMappingHandlerMapping")
+		val result = HashMap<Method, ValidateInput>(handlerMapping.handlerMethods.size)
+		
+		for (handlerMethod in handlerMapping.handlerMethods.values) {
+			result[handlerMethod.method] = handlerMethod.method.getAnnotation(ValidateInput::class.java)
+				?: continue
+		}
+		
+		return result
+	}
 }

@@ -7,7 +7,6 @@ import org.springframework.web.bind.annotation.RequestParam
 import java.lang.reflect.Field
 import java.lang.reflect.Method
 import java.lang.reflect.Parameter
-import kotlin.jvm.java
 
 /**
  * Retrieves the name of the [RequestParam] annotation for this [Parameter],
@@ -21,15 +20,13 @@ import kotlin.jvm.java
  * @receiver The [Parameter] from which to extract the request parameter name.
  * @return The first non-blank name found from the [RequestParam] annotation or the parameter itself.
  */
-internal fun Parameter.requestParamName() : String
-{
+internal fun Parameter.requestParamName(): String {
 	val annotation = getAnnotation(RequestParam::class.java)
-
-    return annotation?.name?.ifBlank { null }
-        ?: annotation?.value?.ifBlank { null }
-        ?: this.name
+	
+	return annotation?.name?.ifBlank { null }
+		?: annotation?.value?.ifBlank { null }
+		?: this.name
 }
-
 
 /**
  * Retrieves the name of the [RequestHeader] annotation for this [Parameter],
@@ -43,15 +40,13 @@ internal fun Parameter.requestParamName() : String
  * @receiver The [Parameter] from which to extract the request header name.
  * @return The first non-blank name found from the [RequestHeader] annotation or the parameter itself.
  */
-internal fun Parameter.requestHeaderName() : String
-{
+internal fun Parameter.requestHeaderName(): String {
 	val annotation = getAnnotation(RequestHeader::class.java)
-
-    return annotation?.name?.ifBlank { null }
-        ?: annotation?.value?.ifBlank { null }
-        ?: this.name
+	
+	return annotation?.name?.ifBlank { null }
+		?: annotation?.value?.ifBlank { null }
+		?: this.name
 }
-
 
 /**
  * Retrieves the name of the [PathVariable] annotation for this [Parameter],
@@ -65,15 +60,13 @@ internal fun Parameter.requestHeaderName() : String
  * @receiver The [Parameter] from which to extract the path variable name.
  * @return The first non-blank name found from the [PathVariable] annotation or the parameter itself.
  */
-internal fun Parameter.pathVariableName() : String
-{
+internal fun Parameter.pathVariableName(): String {
 	val annotation = getAnnotation(PathVariable::class.java)
-
-    return annotation?.name?.ifBlank { null }
-        ?: annotation?.value?.ifBlank { null }
-        ?: this.name
+	
+	return annotation?.name?.ifBlank { null }
+		?: annotation?.value?.ifBlank { null }
+		?: this.name
 }
-
 
 /**
  * Retrieves the name of a request body field represented by this [Field],
@@ -86,13 +79,12 @@ internal fun Parameter.pathVariableName() : String
  * @receiver The [Field] from which to extract the request body field name.
  * @return The first non-blank name found from the [JsonProperty] annotation or the field itself.
  */
-internal fun Field.bodyFieldName() : String
-{
-    val annotation = getAnnotation(JsonProperty::class.java)
-
-    return annotation?.value?.ifBlank { null } ?: this.name
+internal fun Field.bodyFieldName(): String {
+	val annotation = getAnnotation(JsonProperty::class.java)
+	
+	return annotation?.value?.ifBlank { null }
+		?: this.name
 }
-
 
 /**
  * Generates a unique identifier for this Java/Kotlin method.
@@ -110,10 +102,9 @@ internal fun Field.bodyFieldName() : String
  * @receiver The `Method` instance to generate the identifier for.
  * @return A unique, human-readable identifier for the method.
  */
-internal fun Method.getUniqueIdentifier() : String
-{
-    val clazz = this.declaringClass.name
-    val method = this.name
-    val params = this.parameterTypes.joinToString(",") { it.simpleName }
-    return "$clazz#$method($params)"
+internal fun Method.getUniqueIdentifier(): String {
+	val clazz = this.declaringClass.name
+	val method = this.name
+	val params = this.parameterTypes.joinToString(",") { it.simpleName }
+	return "$clazz#$method($params)"
 }

@@ -4,7 +4,7 @@ import io.ghaylan.springboot.validation.constraints.Constraint
 import io.ghaylan.springboot.validation.constraints.message.Message
 import io.ghaylan.springboot.validation.constraints.validators.array.distinct.DistinctConstraint
 import io.ghaylan.springboot.validation.constraints.validators.array.distinct.DistinctValidator
-import io.ghaylan.springboot.validation.groups.DefaultGroup
+import io.ghaylan.springboot.validation.groups.OnDefault
 import kotlin.reflect.KClass
 
 /**
@@ -95,7 +95,7 @@ import kotlin.reflect.KClass
  * @property groups Specifies the validation groups this constraint belongs to.
  *                  Validation groups enable selective validation by grouping constraints,
  *                  allowing the constraint to be applied only during validation runs targeting those groups.
- *                  Defaults to the `DefaultGroup` if none are specified.
+ *                  Defaults to the `OnDefault` if none are specified.
  * @property messages Optional array of [Message] annotations for overriding
  *                   default error messages with localized, error-code-specific messages.
  */
@@ -105,31 +105,32 @@ import kotlin.reflect.KClass
 @Retention(AnnotationRetention.RUNTIME)
 @Target(AnnotationTarget.FIELD, AnnotationTarget.VALUE_PARAMETER)
 annotation class Distinct(
-    val by : Array<String> = [],
-    val mode : DistinctMode = DistinctMode.PER_FIELD,
-    val groups: Array<KClass<*>> = [DefaultGroup::class],
-    val messages : Array<Message> = [])
-{
-    /**
-     * Specifies the strategy used by the `@Distinct` annotation to validate uniqueness
-     * when targeting specific fields of collection elements.
-     */
-    enum class DistinctMode
-    {
-        /**
-         * Validates that the **combination** of all fields listed in the `by` parameter is unique.
-         *
-         * Example: if `by = ["email", "username"]`, the pair of (`email`, `username`) must be unique
-         * across all elements in the collection.
-         */
-        COMBINATION,
-
-        /**
-         * Validates that each field listed in the `by` parameter is unique independently.
-         *
-         * Example: if `by = ["email", "username"]`, then all `email` values must be distinct,
-         * and all `username` values must be distinct — separately.
-         */
-        PER_FIELD
-    }
+	val by: Array<String> = [],
+	val mode: DistinctMode = DistinctMode.PER_FIELD,
+	val groups: Array<KClass<*>> = [OnDefault::class],
+	val messages: Array<Message> = []
+) {
+	
+	/**
+	 * Specifies the strategy used by the `@Distinct` annotation to validate uniqueness
+	 * when targeting specific fields of collection elements.
+	 */
+	enum class DistinctMode {
+		
+		/**
+		 * Validates that the **combination** of all fields listed in the `by` parameter is unique.
+		 *
+		 * Example: if `by = ["email", "username"]`, the pair of (`email`, `username`) must be unique
+		 * across all elements in the collection.
+		 */
+		COMBINATION,
+		
+		/**
+		 * Validates that each field listed in the `by` parameter is unique independently.
+		 *
+		 * Example: if `by = ["email", "username"]`, then all `email` values must be distinct,
+		 * and all `username` values must be distinct — separately.
+		 */
+		PER_FIELD
+	}
 }

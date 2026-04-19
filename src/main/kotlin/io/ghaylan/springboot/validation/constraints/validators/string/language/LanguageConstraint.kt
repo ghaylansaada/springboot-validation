@@ -5,6 +5,6 @@ import io.ghaylan.springboot.validation.constraints.message.MessageMetadata
 import kotlin.reflect.KClass
 
 data class LanguageConstraint(
-    override val groups: Set<KClass<*>>,
-    override val messages : Set<MessageMetadata>
-) : ConstraintMetadata()
+	override val groups: Set<KClass<*>>,
+	override val messages: Set<MessageMetadata>
+): ConstraintMetadata()

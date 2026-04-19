@@ -7,8 +7,8 @@ import kotlin.reflect.KClass
 
 
 data class PhoneConstraint(
-    val allowedTypes: Set<PhoneNumberType>,
-    val allowedCountries: Set<String>,
-    override val groups: Set<KClass<*>>,
-    override val messages : Set<MessageMetadata>
-) : ConstraintMetadata()
+	val allowedTypes: Set<PhoneNumberType>,
+	val allowedCountries: Set<String>,
+	override val groups: Set<KClass<*>>,
+	override val messages: Set<MessageMetadata>
+): ConstraintMetadata()

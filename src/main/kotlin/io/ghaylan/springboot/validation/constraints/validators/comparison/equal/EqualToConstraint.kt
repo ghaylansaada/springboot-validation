@@ -6,7 +6,7 @@ import kotlin.reflect.KClass
 
 
 data class EqualToConstraint(
-    val property: String,
-    override val groups: Set<KClass<*>>,
-    override val messages : Set<MessageMetadata>
-) : ConstraintMetadata()
+	val property: String,
+	override val groups: Set<KClass<*>>,
+	override val messages: Set<MessageMetadata>
+): ConstraintMetadata()

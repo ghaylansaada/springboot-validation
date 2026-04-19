@@ -4,7 +4,7 @@ import io.ghaylan.springboot.validation.constraints.Constraint
 import io.ghaylan.springboot.validation.constraints.message.Message
 import io.ghaylan.springboot.validation.constraints.validators.string.contains.StrOccConstraint
 import io.ghaylan.springboot.validation.constraints.validators.string.contains.StrOccValidator
-import io.ghaylan.springboot.validation.groups.DefaultGroup
+import io.ghaylan.springboot.validation.groups.OnDefault
 import kotlin.reflect.KClass
 
 /**
@@ -64,7 +64,7 @@ import kotlin.reflect.KClass
  * @property groups Specifies the validation groups this constraint belongs to.
  *                  Validation groups enable selective validation by grouping constraints,
  *                  allowing the constraint to be applied only during validation runs targeting those groups.
- *                  Defaults to the `DefaultGroup` if none are specified.
+ *                  Defaults to the `OnDefault` if none are specified.
  * @property messages Optional array of [Message] annotations for overriding
  *                   default error messages with localized, error-code-specific messages.
  */
@@ -74,19 +74,18 @@ import kotlin.reflect.KClass
 @Retention(AnnotationRetention.RUNTIME)
 @Target(AnnotationTarget.FIELD, AnnotationTarget.VALUE_PARAMETER)
 annotation class StrOcc(
-    val value : String,
-    val minOccurrences: Int = 1,
-    val maxOccurrences: Int = Int.MAX_VALUE,
-    val ignoreCase : Boolean = true,
-    val mode : StrOccMode = StrOccMode.EQUALS,
-    val groups: Array<KClass<*>> = [DefaultGroup::class],
-    val messages : Array<Message> = [])
-{
-    enum class StrOccMode
-    {
-        EQUALS,
-        CONTAINS,
-        STARTS_WITH,
-        ENDS_WITH
-    }
+	val value: String,
+	val minOccurrences: Int = 1,
+	val maxOccurrences: Int = Int.MAX_VALUE,
+	val ignoreCase: Boolean = true,
+	val mode: StrOccMode = StrOccMode.EQUALS,
+	val groups: Array<KClass<*>> = [OnDefault::class],
+	val messages: Array<Message> = []
+) {
+	
+	enum class StrOccMode { EQUALS,
+		CONTAINS,
+		STARTS_WITH,
+		ENDS_WITH
+	}
 }

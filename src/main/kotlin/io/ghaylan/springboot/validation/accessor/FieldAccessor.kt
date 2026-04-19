@@ -36,49 +36,45 @@ package io.ghaylan.springboot.validation.accessor
  * val value = acc.getFromAny(anyObject)     // runtime checked; null if wrong type
  * ```
  */
-interface FieldAccessor<T : Any>
-{
-    /**
-     * Runtime container class this accessor was built for (DTO, Map subtype, etc.).
-     * Used by [getFromAny] to validate generic calls.
-     */
-    val containerClass: Class<T>
-
-
-    /**
-     * Type-safe access when you *know* [instance] is (assignable to) [containerClass].
-     *
-     * @throws Throwable strategy-specific errors (reflection, invocation, access).
-     */
-    fun get(instance: T): Any?
-
-
-    /**
-     * Safe, *untyped* bridge for framework code that only has [Any].
-     *
-     * Behavior:
-     * - Returns `null` if [instance] is `null`.
-     * - If [instance] is not assignable to [containerClass]:
-     *   - Return `null` when [strict] = false (default).
-     *   - Throw `IllegalStateException` when [strict] = true.
-     * - Otherwise cast and delegate to [get].
-     *
-     * @param instance The runtime container object (DTO, Map, etc.), or `null`.
-     * @param strict If `true`, throw on container type mismatch (useful in development).
-     */
-    fun getFromAny(
-        instance: Any?,
-        strict : Boolean = false
-    ): Any?
-    {
-        if (instance == null) return null
-
-        if (!containerClass.isInstance(instance)) {
-            if (strict) error("FieldAccessor expected container of type ${containerClass.name}, but received ${instance::class.java.name}.")
-            return null
-        }
-
-        @Suppress("UNCHECKED_CAST")
-        return get(instance as T)
-    }
+interface FieldAccessor<T: Any> {
+	
+	/**
+	 * Runtime container class this accessor was built for (DTO, Map subtype, etc.).
+	 * Used by [getFromAny] to validate generic calls.
+	 */
+	val containerClass: Class<T>
+	
+	/**
+	 * Type-safe access when you *know* [instance] is (assignable to) [containerClass].
+	 *
+	 * @throws Throwable strategy-specific errors (reflection, invocation, access).
+	 */
+	fun get(instance: T): Any?
+	
+	/**
+	 * Safe, *untyped* bridge for framework code that only has [Any].
+	 *
+	 * Behavior:
+	 * - Returns `null` if [instance] is `null`.
+	 * - If [instance] is not assignable to [containerClass]:
+	 *   - Return `null` when [strict] = false (default).
+	 *   - Throw `IllegalStateException` when [strict] = true.
+	 * - Otherwise cast and delegate to [get].
+	 *
+	 * @param instance The runtime container object (DTO, Map, etc.), or `null`.
+	 * @param strict If `true`, throw on container type mismatch (useful in development).
+	 */
+	@Suppress("UNCHECKED_CAST")
+	fun getFromAny(
+		instance: Any?,
+		strict: Boolean = false
+	): Any? {
+		if (instance == null) return null
+		
+		if (!containerClass.isInstance(instance)) {
+			if (strict) error("FieldAccessor expected container of type ${containerClass.name}, but received ${instance::class.java.name}.")
+			return null
+		}
+		return get(instance as T)
+	}
 }

@@ -1,23 +1,21 @@
 package io.ghaylan.springboot.validation.schema
 
-import io.ghaylan.springboot.validation.utils.ReflectionUtils
-import io.ghaylan.springboot.validation.utils.ReflectionUtils.TypeInfo
 import io.ghaylan.springboot.validation.accessor.AccessorRegistry
-import io.ghaylan.springboot.validation.constraints.ConstraintMetadata
 import io.ghaylan.springboot.validation.constraints.Constraint
 import io.ghaylan.springboot.validation.constraints.ConstraintConverter.convertToMetadata
+import io.ghaylan.springboot.validation.constraints.ConstraintMetadata
 import io.ghaylan.springboot.validation.constraints.ConstraintValidator
-import io.ghaylan.springboot.validation.utils.ValidatedMethodFinder
 import io.ghaylan.springboot.validation.constraints.validators.array.distinct.DistinctConstraint
 import io.ghaylan.springboot.validation.constraints.validators.required.RequiredConstraint
-import io.ghaylan.springboot.validation.ext.bodyFieldName
+import io.ghaylan.springboot.validation.ext.*
 import io.ghaylan.springboot.validation.integration.ValidateInput
 import io.ghaylan.springboot.validation.schema.RequestInputSchema.PropertySpec
 import io.ghaylan.springboot.validation.schema.RequestInputSchema.ValidationConfig
-import io.ghaylan.springboot.validation.ext.getUniqueIdentifier
-import io.ghaylan.springboot.validation.ext.pathVariableName
-import io.ghaylan.springboot.validation.ext.requestHeaderName
-import io.ghaylan.springboot.validation.ext.requestParamName
+import io.ghaylan.springboot.validation.schema.ValidationSchemaBuilder.generateSchemaForType
+import io.ghaylan.springboot.validation.schema.ValidationSchemaBuilder.generateStaticSchemas
+import io.ghaylan.springboot.validation.utils.ReflectionUtils
+import io.ghaylan.springboot.validation.utils.ReflectionUtils.TypeInfo
+import io.ghaylan.springboot.validation.utils.ValidatedMethodFinder
 import org.springframework.context.ApplicationContext
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestBody
@@ -383,7 +381,7 @@ object ValidationSchemaBuilder
      *    - Wildcard support (e.g., `Any`, wildcard collections, etc.)
      *
      * 3. **Prioritizes required constraints:**
-     *    Constraints that enforce presence (such as [RequiredConstraintMetadata]) are sorted to appear
+     *    Constraints that enforce presence (such as [RequiredConstraint]) are sorted to appear
      *    first in the resulting map to support fail-fast behavior—stopping validation early if the field is missing.
      *
      * 4. **Returns a deterministic, ordered map:**
@@ -577,8 +575,7 @@ object ValidationSchemaBuilder
     }
 
 
-    private fun primitiveOrBoxedMatch(a: KClass<*>, b: KClass<*>): Boolean
-    {
+    private fun primitiveOrBoxedMatch(a: KClass<*>, b: KClass<*>): Boolean {
         return a == b || primitiveBoxedMap[a] == b || primitiveBoxedMap[b] == a
     }
 
@@ -595,16 +592,16 @@ object ValidationSchemaBuilder
             Float::class,
             Short::class,
             Byte::class,
-                // Java boxed types
+            // Java boxed types
             Integer::class,
             java.lang.Long::class,
             java.lang.Double::class,
             java.lang.Float::class,
             java.lang.Short::class,
             java.lang.Byte::class,
-                // Number supertype
+            // Number supertype
             Number::class,
-                // BigDecimal/BigInteger
+            // BigDecimal/BigInteger
             java.math.BigDecimal::class,
             java.math.BigInteger::class -> true
             else -> false
@@ -613,33 +610,28 @@ object ValidationSchemaBuilder
 
 
     // Check if type is numeric and implements Comparable
-    private fun isComparableNumeric(type: KClass<*>): Boolean
-    {
+    private fun isComparableNumeric(type: KClass<*>): Boolean {
         return isNumericType(type) && Comparable::class.java.isAssignableFrom(type.java)
     }
 
 
     // Helper methods - unchanged
-    private fun TypeInfo.isWildcard(): Boolean
-    {
+    private fun TypeInfo.isWildcard(): Boolean {
         return this.concreteType == Any::class || this == wildcardType
     }
 
 
-    private fun isCollectionLike(type: TypeInfo): Boolean
-    {
+    private fun isCollectionLike(type: TypeInfo): Boolean {
         return Collection::class.java.isAssignableFrom(type.concreteType.java)
     }
 
 
-    private fun isMapLike(type: TypeInfo): Boolean
-    {
+    private fun isMapLike(type: TypeInfo): Boolean {
         return Map::class.java.isAssignableFrom(type.concreteType.java)
     }
 
 
-    private fun typeArgsMatch(actual: List<TypeInfo>, expected: List<TypeInfo>): Boolean
-    {
+    private fun typeArgsMatch(actual: List<TypeInfo>, expected: List<TypeInfo>): Boolean {
         if (expected.isEmpty()) return true
         if (actual.isEmpty() && expected.all { it.isWildcard() }) return true
         if (actual.size != expected.size) return false

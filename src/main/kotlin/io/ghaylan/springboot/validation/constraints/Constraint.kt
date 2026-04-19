@@ -37,7 +37,7 @@ import kotlin.reflect.KClass
  * @Retention(AnnotationRetention.RUNTIME)
  * annotation class ValueIn(
  *   val values: Array<String>,
- *   val groups: Array<KClass<*>> = [DefaultGroup::class]
+ *   val groups: Array<KClass<*>> = [OnDefault::class]
  * )
  * ```
  *
@@ -63,6 +63,7 @@ import kotlin.reflect.KClass
 @Target(AnnotationTarget.CLASS)
 @Retention(AnnotationRetention.RUNTIME)
 annotation class Constraint(
-    val metadata : KClass<out ConstraintMetadata>,
-    val validatedBy: Array<KClass<out ConstraintValidator<out Any, out ConstraintMetadata>>>,
-    val appliesToContainer : Boolean = true)
+	val metadata: KClass<out ConstraintMetadata>,
+	val validatedBy: Array<KClass<out ConstraintValidator<out Any, out ConstraintMetadata>>>,
+	val appliesToContainer: Boolean = true
+)

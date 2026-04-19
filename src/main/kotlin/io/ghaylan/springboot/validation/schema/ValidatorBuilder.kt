@@ -1,17 +1,16 @@
 package io.ghaylan.springboot.validation.schema
 
+import io.ghaylan.springboot.validation.constraints.Constraint
+import io.ghaylan.springboot.validation.constraints.ConstraintMetadata
+import io.ghaylan.springboot.validation.constraints.ConstraintValidator
 import io.ghaylan.springboot.validation.utils.ReflectionUtils
 import io.ghaylan.springboot.validation.utils.ReflectionUtils.TypeInfo
-import io.ghaylan.springboot.validation.constraints.ConstraintMetadata
-import io.ghaylan.springboot.validation.constraints.Constraint
-import io.ghaylan.springboot.validation.constraints.ConstraintValidator
 import io.ghaylan.springboot.validation.utils.SpringBootUtils
 import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition
 import org.springframework.beans.factory.config.AutowireCapableBeanFactory
 import org.springframework.context.ApplicationContext
 import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider
 import org.springframework.core.type.filter.AnnotationTypeFilter
-import kotlin.collections.set
 import kotlin.reflect.KClass
 import kotlin.reflect.KType
 import kotlin.reflect.full.superclasses
@@ -56,8 +55,7 @@ import kotlin.reflect.full.superclasses
  * This method should be invoked once during the application lifecycle, typically at startup,
  * and the result cached for use by the validation engine.
  */
-object ValidatorBuilder
-{
+object ValidatorBuilder {
 
     /**
      * Discovers and instantiates all available [ConstraintValidator] implementations in the application.
@@ -89,8 +87,7 @@ object ValidatorBuilder
      */
     fun buildValidators(
         appContext : ApplicationContext,
-    ) : Map<KClass<out ConstraintMetadata>, Map<TypeInfo, ConstraintValidator<*,*>>>
-    {
+    ) : Map<KClass<out ConstraintMetadata>, Map<TypeInfo, ConstraintValidator<*,*>>> {
         val validators = HashMap<KClass<out ConstraintMetadata>, HashMap<TypeInfo, ConstraintValidator<*,*>>>()
 
         val beanFactory = appContext.autowireCapableBeanFactory
@@ -98,11 +95,9 @@ object ValidatorBuilder
         val allPackages = SpringBootUtils.resolveBasePackages(appContext, beanFactory)
 
         // Scanner that looks for annotations marked with @Constraint
-        val scanner = object : ClassPathScanningCandidateComponentProvider(false)
-        {
+        val scanner = object : ClassPathScanningCandidateComponentProvider(false) {
             // allow scanning for annotations themselves
-            override fun isCandidateComponent(beanDefinition: AnnotatedBeanDefinition): Boolean
-            {
+            override fun isCandidateComponent(beanDefinition: AnnotatedBeanDefinition): Boolean {
                 return beanDefinition.metadata.isAnnotated(Constraint::class.java.name) && beanDefinition.metadata.isAnnotation
             }
         }
@@ -111,12 +106,10 @@ object ValidatorBuilder
 
         val annotationDefs = allPackages.flatMap { scanner.findCandidateComponents(it) }
 
-        for (annotationDef in annotationDefs)
-        {
+        for (annotationDef in annotationDefs) {
             val validatorsClasses = resolveValidatorsClass(annotationDef.beanClassName) ?: continue
 
-            for (validatorClass in validatorsClasses)
-            {
+            for (validatorClass in validatorsClasses) {
                 val (constraintType, valueType) = resolveConstraintAndValueType(validatorClass)
                 val valueTypeMap = validators.getOrPut(constraintType) { hashMapOf() }
                 valueTypeMap[valueType] = resolveValidatorInstance(appContext, beanFactory, validatorClass)
@@ -138,8 +131,7 @@ object ValidatorBuilder
     @Suppress("UNCHECKED_CAST")
     private fun resolveValidatorsClass(
         constraintName: String?
-    ): Array<KClass<out ConstraintValidator<out Any, out ConstraintMetadata>>>?
-    {
+    ): Array<KClass<out ConstraintValidator<out Any, out ConstraintMetadata>>>? {
         return Class.forName(constraintName ?: return null)
             .takeIf { it.isAnnotation }
             ?.let { it as? Class<out Annotation>? }
@@ -176,8 +168,7 @@ object ValidatorBuilder
         appContext : ApplicationContext,
         beanFactory : AutowireCapableBeanFactory,
         validatorKClass: KClass<out ConstraintValidator<out Any, out ConstraintMetadata>>
-    ) : ConstraintValidator<out Any, out ConstraintMetadata>
-    {
+    ) : ConstraintValidator<out Any, out ConstraintMetadata> {
         // 1. Kotlin object?
         validatorKClass.objectInstance?.let { return it }
 
@@ -218,8 +209,7 @@ object ValidatorBuilder
      */
     private fun resolveConstraintAndValueType(
         validatorClass: KClass<out ConstraintValidator<*, *>>
-    ) : Pair<KClass<out ConstraintMetadata>, TypeInfo>
-    {
+    ) : Pair<KClass<out ConstraintMetadata>, TypeInfo> {
         val superType = findConstraintValidatorSuperType(validatorClass)
             ?: error("Class ${validatorClass.simpleName} does not inherit from ConstraintValidator")
 
@@ -255,8 +245,7 @@ object ValidatorBuilder
      */
     private fun findConstraintValidatorSuperType(
         validatorClass: KClass<*>
-    ): KType?
-    {
+    ): KType? {
         return validatorClass.supertypes.firstOrNull { it.classifier == ConstraintValidator::class }
             ?: validatorClass.superclasses.firstNotNullOfOrNull { findConstraintValidatorSuperType(it) }
     }

@@ -1,11 +1,11 @@
 package io.ghaylan.springboot.validation.integration
 
 import io.ghaylan.springboot.validation.engine.ValidatorEngine
+import io.ghaylan.springboot.validation.exceptions.ConstraintViolationException
 import org.aspectj.lang.ProceedingJoinPoint
 import org.aspectj.lang.annotation.Around
 import org.aspectj.lang.annotation.Aspect
 import org.aspectj.lang.reflect.MethodSignature
-import io.ghaylan.springboot.validation.exceptions.ConstraintViolationException
 
 /**
  * **Universal Validation Aspect for Spring WebFlux Controllers**
@@ -52,9 +52,8 @@ import io.ghaylan.springboot.validation.exceptions.ConstraintViolationException
  * 5. **AOP Configuration**: AspectJ or Spring AOP properly configured
  */
 @Aspect
-open class ValidationAspect(private val validatorEngine: ValidatorEngine)
-{
-
+open class ValidationAspect(private val validatorEngine: ValidatorEngine) {
+	
     /**
      * This method is triggered by AspectJ when a controller method annotated with `@ValidateInput`
      * is called. It performs several key operations:
@@ -89,8 +88,7 @@ open class ValidationAspect(private val validatorEngine: ValidatorEngine)
      * @throws IllegalStateException when required context (ServerWebExchange) is missing
      */
     @Around("@annotation(io.ghaylan.springboot.validation.integration.ValidateInput) && within(@org.springframework.web.bind.annotation.RestController *)")
-    open fun run(joinPoint: ProceedingJoinPoint): Any?
-    {
+    open fun run(joinPoint: ProceedingJoinPoint): Any? {
         val method = (joinPoint.signature as? MethodSignature?)?.method ?: return joinPoint.proceed()
 
         // Early exit for methods without parameters

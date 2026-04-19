@@ -16,5 +16,5 @@ import io.ghaylan.springboot.validation.model.errors.ApiError
  * @property errors The list of validation errors that caused the exception.
  */
 class ConstraintViolationException(
-    val errors : List<ApiError>
-) : RuntimeException("Validation failed for ${errors.size} field(s).")
+	val errors: List<ApiError>
+): RuntimeException("Validation failed for ${errors.size} field(s).")

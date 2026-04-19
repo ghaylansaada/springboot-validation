@@ -3,15 +3,11 @@ package io.ghaylan.springboot.validation.utils
 import java.lang.reflect.*
 import java.math.BigDecimal
 import java.math.BigInteger
-import java.time.Instant
-import java.time.LocalDate
-import java.time.LocalDateTime
-import java.time.LocalTime
-import java.time.OffsetTime
-import java.time.ZonedDateTime
+import java.time.*
 import java.time.temporal.Temporal
-import java.util.Date
-import kotlin.reflect.*
+import java.util.*
+import kotlin.reflect.KClass
+import kotlin.reflect.KType
 import kotlin.reflect.jvm.javaType
 
 /**
@@ -30,8 +26,8 @@ import kotlin.reflect.jvm.javaType
  * - Enums and data classes
  * - Cyclic type graphs (prevents infinite recursion)
  */
-object ReflectionUtils
-{
+object ReflectionUtils {
+	
     private val primitiveArrayTypes = setOf(
         FloatArray::class,
         DoubleArray::class,
@@ -113,10 +109,7 @@ object ReflectionUtils
      * @return `true` if the type is a map or subclass of map.
      */
     @Suppress("PLATFORM_CLASS_MAPPED_TO_KOTLIN")
-    fun isMapLike(type : Class<*>) : Boolean
-    {
-        return java.util.Map::class.java.isAssignableFrom(type)
-    }
+    fun isMapLike(type: Class<*>): Boolean = Map::class.java.isAssignableFrom(type)
 
 
     /**
@@ -128,8 +121,7 @@ object ReflectionUtils
      * @param type The class to inspect.
      * @return `true` if it is likely to represent a data object.
      */
-    fun isObjectLike(type : Class<*>) : Boolean
-    {
+    fun isObjectLike(type: Class<*>): Boolean {
         // Early rejection for non-object types
         if (
             type == Unit::class.java ||
@@ -161,8 +153,7 @@ object ReflectionUtils
         var current: Class<*>? = type
 
         // Accept only classes that have at least one real (non-static, non-synthetic) field
-        while (current != null && current != Any::class.java)
-        {
+	    while (current != null && current != Any::class.java) {
             val hasRealFields = current.declaredFields.any {
                 !it.isSynthetic && !Modifier.isStatic(it.modifiers)
             }
@@ -183,14 +174,12 @@ object ReflectionUtils
      * @param type The class to inspect.
      * @return `true` if the type is array-like.
      */
-    fun isCollectionLike(type : Class<*>) : Boolean
-    {
+    fun isCollectionLike(type: Class<*>): Boolean {
         return type.isArray || Collection::class.java.isAssignableFrom(type)
     }
-
-
-    fun isCollection(value : Any) : Boolean
-    {
+	
+	
+	fun isCollection(value: Any): Boolean {
         return value is Array<*>
                 || value is Collection<*>
                 || value is BooleanArray
@@ -202,10 +191,9 @@ object ReflectionUtils
                 || value is FloatArray
                 || value is DoubleArray
     }
-
-
-    fun isScalar(value : Any) : Boolean
-    {
+	
+	
+	fun isScalar(value: Any): Boolean {
         return value is CharSequence
                 || value is Char
                 || value is Number
@@ -224,8 +212,7 @@ object ReflectionUtils
      * @param clazz The class to inspect.
      * @return A list of all non-static, declared fields across the inheritance chain.
      */
-    fun getFields(clazz : Class<*>) : List<Field>
-    {
+    fun getFields(clazz: Class<*>): List<Field> {
         return generateSequence(clazz) { it.superclass }
             .flatMap { it.declaredFields.asSequence().onEach { field -> field.trySetAccessible() } }
             .toList()
@@ -240,10 +227,11 @@ object ReflectionUtils
      * @param visited A mutable set to track seen types (for cycle prevention).
      * @return Fully resolved [TypeInfo] tree.
      */
-    private fun buildTypeInfo(type: Type, visited: MutableSet<Type> = mutableSetOf()) : TypeInfo
-    {
+    private fun buildTypeInfo(
+	    type: Type,
+	    visited: MutableSet<Type> = mutableSetOf()
+    ): TypeInfo {
         if (!visited.add(type)) {
-
             // Type already seen: prevent infinite loop by returning fallback
             return TypeInfo(
                 rawRootType = Any::class,
@@ -251,9 +239,8 @@ object ReflectionUtils
                 kind = TypeKind.ANY,
                 typeArguments = emptyList())
         }
-
-        return when (type)
-        {
+	    
+	    return when (type) {
             // 🔷 Case 1: If it's a parameterized type like List<String> or Map<String, Int>
             is ParameterizedType -> {
 

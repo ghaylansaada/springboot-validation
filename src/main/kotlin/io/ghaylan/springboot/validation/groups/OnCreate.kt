@@ -9,8 +9,8 @@ package io.ghaylan.springboot.validation.groups
  * **Example:**
  * ```kotlin
  * @PostMapping("/users")
- * @ValidateInput(groups = [CreateGroup::class])
+ * @ValidateInput(groups = [OnCreate::class])
  * fun createUser(@RequestBody dto: UserDTO)
  * ```
  */
-interface CreateGroup
+interface OnCreate

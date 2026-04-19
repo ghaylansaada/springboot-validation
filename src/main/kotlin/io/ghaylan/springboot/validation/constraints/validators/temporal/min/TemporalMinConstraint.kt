@@ -5,8 +5,8 @@ import io.ghaylan.springboot.validation.constraints.message.MessageMetadata
 import kotlin.reflect.KClass
 
 data class TemporalMinConstraint(
-    val value : String,
-    val inclusive : Boolean,
-    override val groups: Set<KClass<*>>,
-    override val messages : Set<MessageMetadata>
-) : ConstraintMetadata()
+	val value: String,
+	val inclusive: Boolean,
+	override val groups: Set<KClass<*>>,
+	override val messages: Set<MessageMetadata>
+): ConstraintMetadata()

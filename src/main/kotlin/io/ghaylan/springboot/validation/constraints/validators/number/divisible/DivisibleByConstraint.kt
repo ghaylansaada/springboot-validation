@@ -5,7 +5,7 @@ import io.ghaylan.springboot.validation.constraints.message.MessageMetadata
 import kotlin.reflect.KClass
 
 data class DivisibleByConstraint(
-    val divisor : Double,
-    override val groups: Set<KClass<*>>,
-    override val messages : Set<MessageMetadata>
-) : ConstraintMetadata()
+	val divisor: Double,
+	override val groups: Set<KClass<*>>,
+	override val messages: Set<MessageMetadata>
+): ConstraintMetadata()

@@ -16,4 +16,7 @@ package io.ghaylan.springboot.validation.constraints.message
  * @property text The custom error message text provided by the developer. Supports placeholders.
  */
 @Retention(AnnotationRetention.RUNTIME)
-annotation class Message(val lang : String, val text: String)
+annotation class Message(
+	val lang: String,
+	val text: String
+)

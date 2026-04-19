@@ -7,28 +7,25 @@ import io.ghaylan.springboot.validation.model.errors.ApiErrorCode
 import kotlin.math.abs
 
 
-object DivisibleByValidator : ConstraintValidator<Number, DivisibleByConstraint>()
-{
-
-    override suspend fun validate(
-        value: Number?,
-        constraint: DivisibleByConstraint,
-        context: ValidationContext
-    ) : ApiError?
-    {
-        val number = value?.toDouble() ?: return null
-
-        val divisor = constraint.divisor
-
-        val remainder = number % divisor
-        val epsilon = 1e-9
-        val isDivisible = remainder < epsilon || abs(remainder - divisor) < epsilon
-
-        if (isDivisible) return null
-
-        return ApiError(code = ApiErrorCode.DIVISIBILITY_VIOLATION, message = "Must be divisible by `$divisor`")
-    }
-
-
-    override fun applicableErrorCodes(): Array<ApiErrorCode> = arrayOf(ApiErrorCode.DIVISIBILITY_VIOLATION)
+object DivisibleByValidator: ConstraintValidator<Number, DivisibleByConstraint>() {
+	
+	override suspend fun validate(
+		value: Number?,
+		constraint: DivisibleByConstraint,
+		context: ValidationContext
+	): ApiError? {
+		val number = value?.toDouble()
+			?: return null
+		val divisor = constraint.divisor
+		val remainder = number % divisor
+		val epsilon = 1e-9
+		val isDivisible = remainder < epsilon || abs(remainder - divisor) < epsilon
+		
+		if (isDivisible) return null
+		
+		return ApiError(code = ApiErrorCode.DIVISIBILITY_VIOLATION, message = "Must be divisible by `$divisor`")
+	}
+	
+	
+	override fun applicableErrorCodes(): Array<ApiErrorCode> = arrayOf(ApiErrorCode.DIVISIBILITY_VIOLATION)
 }

@@ -7,7 +7,6 @@ import java.lang.invoke.VarHandle
 import java.lang.reflect.Field
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier
-import kotlin.collections.get
 
 /**
  * Builds optimized [FieldAccessor] instances for reading values from **objects** or **maps**.
@@ -31,8 +30,7 @@ import kotlin.collections.get
  * ### Failure
  * If the container is not a Map and no field strategy succeeds, `build()` throws `IllegalStateException`.
  */
-object AccessorFactory
-{
+object AccessorFactory {
 
     /**
      * Build a [FieldAccessor] for [fieldName] on [containerClass].
@@ -44,8 +42,8 @@ object AccessorFactory
     fun <T : Any> build(
         containerClass: Class<T>,
         fieldName: String,
-    ): FieldAccessor<T>
-    {
+    ): FieldAccessor<T> {
+
         // Map container? (fast exit; do NOT attempt bean/field resolution on raw maps.)
         buildMapAccessorIfApplicable(containerClass, fieldName)?.let { return it }
 
@@ -66,7 +64,6 @@ object AccessorFactory
         return buildReflectiveAccessor(field, containerClass)
     }
 
-
     /**
      * If [containerClass] implements [Map], return an accessor that performs key lookup.
      *
@@ -81,17 +78,14 @@ object AccessorFactory
     private fun <T : Any> buildMapAccessorIfApplicable(
         containerClass: Class<T>,
         fieldName: String,
-    ) : FieldAccessor<T>?
-    {
+    ): FieldAccessor<T>? {
         if (!ReflectionUtils.isMapLike(containerClass)) return null
-
-        return object : FieldAccessor<T>
-        {
+	    
+	    return object: FieldAccessor<T> {
             override val containerClass: Class<T> = containerClass
 
             @Suppress("UNCHECKED_CAST")
-            override fun get(instance: T): Any?
-            {
+            override fun get(instance: T): Any? {
                 val map = instance as Map<*, *>
                 // Fast path: exact String key
                 if (map.containsKey(fieldName)) return map[fieldName]
@@ -104,7 +98,6 @@ object AccessorFactory
         }
     }
 
-
     /**
      * Attempt to build an accessor that calls a public getter method.
      *
@@ -116,8 +109,7 @@ object AccessorFactory
     private fun <T : Any> buildGetterAccessor(
         containerClass: Class<T>,
         fieldName: String
-    ) : FieldAccessor<T>?
-    {
+    ): FieldAccessor<T>? {
         val cap = fieldName.replaceFirstChar { it.uppercaseChar() }
 
         // Fast path reflective lookup
@@ -126,14 +118,12 @@ object AccessorFactory
             .getOrNull()
             ?: findGetterViaBeanInfo(containerClass, fieldName)
             ?: return null
-
-        return object : FieldAccessor<T>
-        {
+	    
+	    return object: FieldAccessor<T> {
             override val containerClass: Class<T> = containerClass
             override fun get(instance: T): Any? = method.invoke(instance)
         }
     }
-
 
     /**
      * Locate the first field with the given [fieldName] in [containerClass] or any of its superclasses.
@@ -145,37 +135,31 @@ object AccessorFactory
     private fun findFieldDeep(
         containerClass: Class<*>,
         fieldName: String
-    ) : Field?
-    {
+    ): Field? {
         var current: Class<*>? = containerClass
-
-        while (current != null)
-        {
+	    while (current != null) {
             current.declaredFields.firstOrNull { f ->
-                f.name == fieldName
-                        && !f.isSynthetic
+                f.name == fieldName && !f.isSynthetic
                         && !Modifier.isStatic(f.modifiers)
                         && !Modifier.isTransient(f.modifiers)
             }?.let { return it }
-
             current = current.superclass
         }
-
         return null
     }
-
 
     /**
      * BeanInfo fallback that tolerates non-standard getter names.
      */
-    private fun findGetterViaBeanInfo(type: Class<*>, fieldName: String): Method?
-    {
+    private fun findGetterViaBeanInfo(
+	    type: Class<*>,
+	    fieldName: String
+    ): Method? {
         return runCatching {
             val info = Introspector.getBeanInfo(type)
             info.propertyDescriptors.firstOrNull { it.name == fieldName }?.readMethod
         }.getOrNull()
     }
-
 
     /**
      * Attempt to build a VarHandle-based accessor for ultra-fast field access.
@@ -188,29 +172,22 @@ object AccessorFactory
     private fun <T : Any> buildVarHandleAccessor(
         field: Field,
         containerClass: Class<T>
-    ) : FieldAccessor<T>?
-    {
+    ): FieldAccessor<T>? {
         return runCatching {
-
             val declaringClass = field.declaringClass
-
             // Create a lookup with private access to the declaring class
             val lookup = MethodHandles.privateLookupIn(declaringClass, MethodHandles.lookup())
-
             // Bind a VarHandle to the field
             val vh: VarHandle = lookup.findVarHandle(declaringClass, field.name, field.type)
-
             // Return an accessor using VarHandle for near-native performance
             object : FieldAccessor<T> {
                 override val containerClass: Class<T> = containerClass
                 override fun get(instance: T): Any? = vh.get(instance)
             }
-
         }.getOrNull()
     }
-
-
-    /**
+	
+	/**
      * Fast fallback when VarHandle is unavailable but MethodHandle unreflect is allowed.
      * Uses [buildFieldAccessor] and wraps the result in a [FieldAccessor].
      */
@@ -221,14 +198,12 @@ object AccessorFactory
     {
         return runCatching {
             val pa = field.buildFieldAccessor()
-            object : FieldAccessor<T>
-            {
+	        object: FieldAccessor<T> {
                 override val containerClass: Class<T> = containerClass
                 override fun get(instance: T): Any? = pa.get(instance)
             }
         }.getOrNull()
     }
-
 
     /**
      * Fallback: Build a reflection-based accessor.
@@ -238,14 +213,10 @@ object AccessorFactory
     private fun <T : Any> buildReflectiveAccessor(
         field : Field,
         containerClass: Class<T>
-    ): FieldAccessor<T>
-    {
+    ): FieldAccessor<T> {
         field.trySetAccessible()
-
-        return object : FieldAccessor<T>
-        {
+	    return object: FieldAccessor<T> {
             override val containerClass: Class<T> = containerClass
-
             override fun get(instance: T): Any? = field.get(instance)
         }
     }

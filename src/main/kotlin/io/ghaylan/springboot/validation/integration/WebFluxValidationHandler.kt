@@ -2,11 +2,11 @@ package io.ghaylan.springboot.validation.integration
 
 import io.ghaylan.springboot.validation.engine.ValidatorEngine
 import io.ghaylan.springboot.validation.exceptions.ConstraintViolationException
-import io.ghaylan.springboot.validation.model.errors.ApiError
 import io.ghaylan.springboot.validation.ext.getUniqueIdentifier
 import io.ghaylan.springboot.validation.ext.pathVariableName
 import io.ghaylan.springboot.validation.ext.requestHeaderName
 import io.ghaylan.springboot.validation.ext.requestParamName
+import io.ghaylan.springboot.validation.model.errors.ApiError
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.reactive.asPublisher
 import kotlinx.coroutines.reactor.mono
@@ -22,7 +22,7 @@ import reactor.core.publisher.Mono
 import reactor.util.context.ContextView
 import java.lang.reflect.Method
 import java.lang.reflect.Parameter
-import java.util.Locale
+import java.util.*
 import kotlin.reflect.jvm.kotlinFunction
 
 /**
@@ -186,8 +186,7 @@ object WebFluxValidationHandler
         args: Array<Any?>,
         validatorEngine: ValidatorEngine,
         joinPoint: ProceedingJoinPoint
-    ) : Mono<*>
-    {
+    ) : Mono<*> {
         return validateReactively(requestId, parameters, args, validatorEngine)
             .then(proceedWithMono(joinPoint, args))
     }
@@ -309,7 +308,6 @@ object WebFluxValidationHandler
         }
     }
 
-
     /**
      * Retrieves the current `ServerWebExchange` from Reactor context.
      *
@@ -318,14 +316,9 @@ object WebFluxValidationHandler
      */
     private fun getCurrentServerWebExchange(
         context: ContextView
-    ): Mono<ServerWebExchange>
-    {
-        return ServerWebExchangeContextFilter
-            .getExchange(context)       // returns Optional<ServerWebExchange>
-            .map { Mono.just(it) }      // wrap in Mono if present
-            .orElse(Mono.empty())       // empty if not found
+    ): Mono<ServerWebExchange> {
+		return Mono.justOrEmpty(ServerWebExchangeContextFilter.getExchange(context))
     }
-
 
     /**
      * **Reactive validation strategy for `Mono<T>` and `Flux<T>` return types.**
@@ -403,7 +396,6 @@ object WebFluxValidationHandler
         }
     }
 
-
     /**
      * Runs validation logic by extracting HTTP request details from parameters and invoking the validator.
      *
@@ -419,8 +411,7 @@ object WebFluxValidationHandler
         resolvedArgs: Array<out Any?>,
         validatorEngine: ValidatorEngine,
         exchange: ServerWebExchange
-    ) : List<ApiError>
-    {
+    ) : List<ApiError> {
         val zipped = parameters.zip(resolvedArgs.asList())
 
         var requestBody: Any? = null
@@ -428,8 +419,7 @@ object WebFluxValidationHandler
         val headers = mutableMapOf<String, Any?>()
         val pathVariables = mutableMapOf<String, Any?>()
 
-        for ((param, value) in zipped)
-        {
+        for ((param, value) in zipped) {
             when {
                 param.isAnnotationPresent(RequestBody::class.java) && requestBody == null -> requestBody = value
                 param.isAnnotationPresent(RequestParam::class.java) -> queryParams[param.requestParamName()] = value

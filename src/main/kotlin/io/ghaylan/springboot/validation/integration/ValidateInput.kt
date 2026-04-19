@@ -1,10 +1,10 @@
 package io.ghaylan.springboot.validation.integration
 
-import io.ghaylan.springboot.validation.groups.CreateGroup
-import io.ghaylan.springboot.validation.groups.DefaultGroup
-import io.ghaylan.springboot.validation.groups.UpdateGroup
-import io.ghaylan.springboot.validation.model.errors.ApiError
 import io.ghaylan.springboot.validation.exceptions.ConstraintViolationException
+import io.ghaylan.springboot.validation.groups.OnCreate
+import io.ghaylan.springboot.validation.groups.OnDefault
+import io.ghaylan.springboot.validation.groups.OnUpdate
+import io.ghaylan.springboot.validation.model.errors.ApiError
 import kotlin.reflect.KClass
 
 /**
@@ -27,18 +27,18 @@ import kotlin.reflect.KClass
  *
  * ### Validation Groups:
  * - The [groups] property specifies which validation groups to activate for this invocation.
- * - If not explicitly set, the [DefaultGroup] is used.
+ * - If not explicitly set, the [OnDefault] is used.
  * - By leveraging validation groups, it's possible to apply different rules depending on the use case.
  *   For example:
- *   - [CreateGroup]: Used during creation operations.
- *   - [UpdateGroup]: Used during update operations.
- *   - [DefaultGroup]: Used as the fallback group when no specific group is set.
+ *   - [OnCreate]: Used during creation operations.
+ *   - [OnUpdate]: Used during update operations.
+ *   - [OnDefault]: Used as the fallback group when no specific group is set.
  * - Developers can define additional custom validation groups by creating their own marker interfaces or classes.
  *
  * ### Example Usage:
  * ```kotlin
  * @PostMapping("/users")
- * @ValidateInput(groups = [CreateGroup::class])
+ * @ValidateInput(groups = [OnCreate::class])
  * fun createUser(@RequestBody dto: UserDTO) { ... }
  * ```
  *
@@ -48,16 +48,17 @@ import kotlin.reflect.KClass
  * @property validateHeaders Whether to validate request headers. Defaults to `true`.
  * @property singleErrorPerField If `true` (default), stops validation for a field after the first constraint failure,
  *                               reducing noise in error reports.
- * @property groups The set of validation groups to apply. Defaults to `[DefaultGroup]`.
- *                  Supported built-in groups: [DefaultGroup], [CreateGroup], [UpdateGroup].
+ * @property groups The set of validation groups to apply. Defaults to `[OnDefault]`.
+ *                  Supported built-in groups: [OnDefault], [OnCreate], [OnUpdate].
  *                  You can also create your own group interfaces or classes.
  */
 @Target(AnnotationTarget.FUNCTION)
 @Retention(AnnotationRetention.RUNTIME)
 annotation class ValidateInput(
-    val validateBody: Boolean = true,
-    val validateQuery: Boolean = true,
-    val validatePath: Boolean = true,
-    val validateHeaders: Boolean = true,
-    val singleErrorPerField : Boolean = true,
-    val groups: Array<KClass<*>> = [DefaultGroup::class])
+	val validateBody: Boolean = true,
+	val validateQuery: Boolean = true,
+	val validatePath: Boolean = true,
+	val validateHeaders: Boolean = true,
+	val singleErrorPerField: Boolean = true,
+	val groups: Array<KClass<*>> = [OnDefault::class]
+)

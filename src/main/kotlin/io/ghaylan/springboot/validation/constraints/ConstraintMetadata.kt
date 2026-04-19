@@ -17,11 +17,9 @@ import kotlin.reflect.KClass
  *   Constraints without groups are always active; otherwise,
  *   they are validated conditionally based on the active group(s).
  */
-abstract class ConstraintMetadata
-{
-    abstract val groups: Set<KClass<*>>
-
-    abstract val messages : Set<MessageMetadata>
-
-    val appliesToContainer : Boolean = false
+abstract class ConstraintMetadata {
+	
+	abstract val groups: Set<KClass<*>>
+	abstract val messages: Set<MessageMetadata>
+	val appliesToContainer: Boolean = false
 }

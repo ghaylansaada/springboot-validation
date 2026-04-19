@@ -1,6 +1,6 @@
 package io.ghaylan.springboot.validation.ext
 
-import java.util.Locale
+import java.util.*
 
 /**
  * Converts this [Locale] to a language string suitable for use in localization or language tags.
@@ -14,12 +14,11 @@ import java.util.Locale
  * Locale("fr").toLanguageTagString()       // "fr"
  * ```
  */
-internal fun Locale.toLanguageTagString() : String
-{
-    return when {
-        this.country.isNotEmpty() -> "${this.language}_${this.country}"
-        else -> this.language
-    }.lowercase()
+internal fun Locale.toLanguageTagString(): String {
+	return when {
+		this.country.isNotEmpty() -> "${this.language}_${this.country}"
+		else -> this.language
+	}.lowercase()
 }
 
 /**
@@ -31,7 +30,8 @@ internal fun Locale.toLanguageTagString() : String
  * "FR".normalizeLanguageTag()    // "fr"
  * ```
  */
-internal fun String.normalizeLanguageTag() : String = this.lowercase().replace("_", "-")
+internal fun String.normalizeLanguageTag(): String = this.lowercase()
+	.replace("_", "-")
 
 /**
  * Extracts only the language part from a normalized language string.
@@ -44,4 +44,4 @@ internal fun String.normalizeLanguageTag() : String = this.lowercase().replace("
  * "fr".extractLanguage()    // "fr"
  * ```
  */
-internal fun String.extractLanguage() : String = this.substringBefore("-")
+internal fun String.extractLanguage(): String = this.substringBefore("-")

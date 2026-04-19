@@ -6,7 +6,7 @@ import java.time.DayOfWeek
 import kotlin.reflect.KClass
 
 data class AllowedDaysConstraint(
-    val days : Set<DayOfWeek>,
-    override val groups: Set<KClass<*>>,
-    override val messages : Set<MessageMetadata>
-) : ConstraintMetadata()
+	val days: Set<DayOfWeek>,
+	override val groups: Set<KClass<*>>,
+	override val messages: Set<MessageMetadata>
+): ConstraintMetadata()

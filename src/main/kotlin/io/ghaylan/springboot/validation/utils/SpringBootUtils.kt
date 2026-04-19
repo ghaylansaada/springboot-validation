@@ -7,13 +7,6 @@ import org.springframework.boot.SpringBootConfiguration
 import org.springframework.boot.autoconfigure.AutoConfigurationPackages
 import org.springframework.context.ApplicationContext
 import org.springframework.core.env.Environment
-import kotlin.collections.distinct
-import kotlin.collections.map
-import kotlin.collections.mapNotNull
-import kotlin.collections.plusAssign
-import kotlin.text.isNotEmpty
-import kotlin.text.split
-import kotlin.text.trim
 
 /**
  * Utility methods for resolving base packages in a Spring Boot application.
@@ -45,8 +38,7 @@ import kotlin.text.trim
  * This order ensures compatibility with Spring Boot’s default behavior while
  * providing graceful fallbacks for custom integration scenarios.
  */
-object SpringBootUtils
-{
+object SpringBootUtils {
 
     /**
      * Resolves the base packages of the application using multiple strategies.
@@ -60,13 +52,11 @@ object SpringBootUtils
     fun resolveBasePackages(
         context : ApplicationContext,
         beanFactory : AutowireCapableBeanFactory
-    ) : Set<String>
-    {
+    ): Set<String> {
         val detected = linkedSetOf("io.ghaylan.springboot")
 
         // 1. AutoConfigurationPackages
-        if (AutoConfigurationPackages.has(beanFactory))
-        {
+	    if (AutoConfigurationPackages.has(beanFactory)) {
             detected += AutoConfigurationPackages.get(beanFactory)
         }
 
@@ -94,8 +84,7 @@ object SpringBootUtils
      * @return A list of detected package names, or an empty list if no
      * configuration beans are found.
      */
-    private fun trySpringBootConfigurationBeans(ctx : ApplicationContext): List<String>
-    {
+    private fun trySpringBootConfigurationBeans(ctx: ApplicationContext): List<String> {
         return ctx.getBeansWithAnnotation<SpringBootConfiguration>().values
             .map { AopUtils.getTargetClass(it) }
             .map { it.packageName }
@@ -117,8 +106,7 @@ object SpringBootUtils
      * @return A list of detected package names, or an empty list if the property
      * is not set or contains no valid classes.
      */
-    private fun trySpringMainSources(env: Environment): List<String>
-    {
+    private fun trySpringMainSources(env: Environment): List<String> {
         val raw = env.getProperty("spring.main.sources") ?: return emptyList()
         return raw.split(',')
             .mapNotNull { str -> str.trim().takeIf { it.isNotEmpty() } }

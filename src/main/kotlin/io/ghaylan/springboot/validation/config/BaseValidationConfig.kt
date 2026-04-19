@@ -21,45 +21,45 @@ import org.springframework.web.filter.reactive.ServerWebExchangeContextFilter
  * in the Spring context, allowing easy customization by the application.
  */
 @AutoConfiguration
-open class BaseValidationConfig
-{
-    /**
-     * Provides a [ServerWebExchangeContextFilter] bean to make the current
-     * reactive server exchange available in the context.
-     */
-    @Bean
-    @ConditionalOnMissingBean
-    open fun exchangeContextWebFilter() : ServerWebExchangeContextFilter = ServerWebExchangeContextFilter()
-
-    /**
-     * Creates the [ValidationRegistry] bean which acts as a container
-     * for all registered validations.
-     */
-    @Bean
-    @ConditionalOnMissingBean
-    open fun validationRegistry() = ValidationRegistry()
-
-    /**
-     * Creates the [ValidatorEngine] bean which executes validations
-     * using the [ValidationRegistry].
-     *
-     * @param validationRegistry The registry containing all validations.
-     */
-    @Bean
-    @ConditionalOnMissingBean
-    open fun validatorEngine(
-        validationRegistry: ValidationRegistry
-    ) = ValidatorEngine(validationRegistry)
-
-    /**
-     * Creates the [ValidationAspect] bean which applies validations
-     * via Spring AOP on annotated methods.
-     *
-     * @param validatorEngine The engine used to perform validations.
-     */
-    @Bean
-    @ConditionalOnMissingBean
-    open fun validationAspect(
-        validatorEngine: ValidatorEngine
-    ) = ValidationAspect(validatorEngine)
+open class BaseValidationConfig {
+	
+	/**
+	 * Provides a [ServerWebExchangeContextFilter] bean to make the current
+	 * reactive server exchange available in the context.
+	 */
+	@Bean
+	@ConditionalOnMissingBean
+	open fun exchangeContextWebFilter(): ServerWebExchangeContextFilter = ServerWebExchangeContextFilter()
+	
+	/**
+	 * Creates the [ValidationRegistry] bean which acts as a container
+	 * for all registered validations.
+	 */
+	@Bean
+	@ConditionalOnMissingBean
+	open fun validationRegistry() = ValidationRegistry()
+	
+	/**
+	 * Creates the [ValidatorEngine] bean which executes validations
+	 * using the [ValidationRegistry].
+	 *
+	 * @param validationRegistry The registry containing all validations.
+	 */
+	@Bean
+	@ConditionalOnMissingBean
+	open fun validatorEngine(
+		validationRegistry: ValidationRegistry
+	) = ValidatorEngine(validationRegistry)
+	
+	/**
+	 * Creates the [ValidationAspect] bean which applies validations
+	 * via Spring AOP on annotated methods.
+	 *
+	 * @param validatorEngine The engine used to perform validations.
+	 */
+	@Bean
+	@ConditionalOnMissingBean
+	open fun validationAspect(
+		validatorEngine: ValidatorEngine
+	) = ValidationAspect(validatorEngine)
 }

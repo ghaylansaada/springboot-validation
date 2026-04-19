@@ -21,8 +21,7 @@ import java.lang.reflect.Field
  * @throws IllegalAccessException if the lookup fails.
  */
 @Throws(IllegalAccessException::class)
-fun Field.buildFieldAccessor() : PropertyAccessor
-{
+fun Field.buildFieldAccessor(): PropertyAccessor {
     // Best effort to relax access checks (ignored if not permitted)
     this.trySetAccessible()
 

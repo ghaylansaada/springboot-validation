@@ -2,11 +2,7 @@ package io.ghaylan.springboot.validation.constraints
 
 import io.ghaylan.springboot.validation.constraints.message.Message
 import io.ghaylan.springboot.validation.constraints.message.MessageMetadata
-import kotlin.reflect.KClass
-import kotlin.reflect.KClassifier
-import kotlin.reflect.KMutableProperty1
-import kotlin.reflect.KParameter
-import kotlin.reflect.KProperty1
+import kotlin.reflect.*
 import kotlin.reflect.jvm.jvmName
 
 /**
@@ -45,8 +41,7 @@ import kotlin.reflect.jvm.jvmName
  *
  * This mechanism is commonly used in schema parsing and validation frameworks to extract reusable metadata from annotations.
  */
-object ConstraintConverter
-{
+object ConstraintConverter {
 
     /**
      * Converts this annotation instance into a corresponding [ConstraintMetadata] object.
@@ -62,8 +57,7 @@ object ConstraintConverter
      * @return A constructed instance of the corresponding [ConstraintMetadata] subclass.
      * @throws IllegalStateException if the annotation is not marked with `@Constraint`, or if required mapping fails.
      */
-    fun Annotation.convertToMetadata() : ConstraintMetadata
-    {
+    fun Annotation.convertToMetadata(): ConstraintMetadata {
         val constraintAnn = this.annotationClass.annotations
             .find { it is Constraint } as? Constraint
             ?: error("${this.annotationClass.jvmName} is not annotated with @Constraint")
@@ -79,9 +73,8 @@ object ConstraintConverter
             .associateBy { it.name }
 
         val args = mutableMapOf<KParameter, Any?>()
-
-        for ((name, param) in constructorParams)
-        {
+	    
+	    for ((name, param) in constructorParams) {
             val prop = annotationProperties[name]
                 ?: error("Parameter '$name' in metadata constructor not found in annotation ${this.annotationClass.simpleName}")
 
@@ -89,9 +82,7 @@ object ConstraintConverter
 
             // Optional: Convert arrays to sets for group and validator handling
             val expectedType = param.type.classifier
-
-            val finalValue = when (value)
-            {
+		    val finalValue = when (value) {
                 is Array<*> -> {
 
                     val mappedValues = value.map {
@@ -150,7 +141,6 @@ object ConstraintConverter
         return instance
     }
 
-
     /**
      * Determines whether two Kotlin types are compatible for assignment.
      *
@@ -160,25 +150,21 @@ object ConstraintConverter
     private fun areTypesCompatible(
         from: KClassifier?,
         to: KClassifier?
-    ): Boolean
-    {
+    ): Boolean {
         if (from == to) return true
 
         // Handle common special cases
-        return when
-        {
+	    return when {
             isArrayOfKClass(from) && to == Set::class -> true
             from is KClass<*> && to is KClass<*> && from.java.isAssignableFrom(to.java) -> true
             else -> false
         }
     }
-
-
-    /**
+	
+	/**
      * Checks whether the given classifier represents `Array<KClass<*>>`.
      */
-    private fun isArrayOfKClass(type: KClassifier?) : Boolean
-    {
+	private fun isArrayOfKClass(type: KClassifier?): Boolean {
         // Check raw class and generic type
         return type is KClass<*> &&
                 type.java.isArray &&

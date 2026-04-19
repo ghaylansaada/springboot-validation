@@ -9,7 +9,7 @@ package io.ghaylan.springboot.validation.groups
  *
  * **Example:**
  * ```kotlin
- * engine.validate<UserDTO>(user) // Uses DefaultGroup
+ * engine.validate<UserDTO>(user) // Uses OnDefault
  * ```
  */
-interface DefaultGroup
+interface OnDefault

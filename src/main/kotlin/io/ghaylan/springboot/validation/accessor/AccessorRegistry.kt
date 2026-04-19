@@ -1,5 +1,6 @@
 package io.ghaylan.springboot.validation.accessor
 
+import io.ghaylan.springboot.validation.accessor.AccessorRegistry.clear
 import java.util.concurrent.ConcurrentHashMap
 
 /**
@@ -19,35 +20,35 @@ import java.util.concurrent.ConcurrentHashMap
  * val email = emailAcc.get(userDto)
  * ```
  */
-object AccessorRegistry
-{
-    /** Internal key: container class + field name. */
-    private data class Key(val clazz: Class<*>, val fieldRealName: String, val fieldResolvedName: String)
-
-    /** Global cache: safe for concurrent read/write. */
-    private val cache = ConcurrentHashMap<Key, FieldAccessor<*>>()
-
-
-
-    /**
-     * Get (or build & cache) an accessor for [fieldRealName] on [containerClass].
-     */
-    @Suppress("UNCHECKED_CAST")
-    fun <T : Any> getOrCreate(
-        containerClass : Class<T>,
-        fieldRealName : String,
-        fieldResolvedName : String
-    ) : FieldAccessor<T>
-    {
-        return cache.computeIfAbsent(Key(containerClass, fieldRealName, fieldResolvedName)) {
-            AccessorFactory.build(containerClass, fieldRealName)
-        } as FieldAccessor<T>
-    }
-
-
-    /**
-     * Remove all cached accessors.
-     * Use in dev mode when classloaders bounce (Spring DevTools).
-     */
-    fun clear() = cache.clear()
+object AccessorRegistry {
+	
+	/** Internal key: container class + field name. */
+	private data class Key(
+		val clazz: Class<*>,
+		val fieldRealName: String,
+		val fieldResolvedName: String
+	)
+	
+	/** Global cache: safe for concurrent read/write. */
+	private val cache = ConcurrentHashMap<Key, FieldAccessor<*>>()
+	
+	/**
+	 * Get (or build & cache) an accessor for [fieldRealName] on [containerClass].
+	 */
+	@Suppress("UNCHECKED_CAST")
+	fun <T: Any> getOrCreate(
+		containerClass: Class<T>,
+		fieldRealName: String,
+		fieldResolvedName: String
+	): FieldAccessor<T> {
+		return cache.computeIfAbsent(Key(containerClass, fieldRealName, fieldResolvedName)) {
+			AccessorFactory.build(containerClass, fieldRealName)
+		} as FieldAccessor<T>
+	}
+	
+	/**
+	 * Remove all cached accessors.
+	 * Use in dev mode when classloaders bounce (Spring DevTools).
+	 */
+	fun clear() = cache.clear()
 }

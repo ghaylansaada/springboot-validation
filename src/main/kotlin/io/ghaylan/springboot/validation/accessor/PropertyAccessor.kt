@@ -25,17 +25,18 @@ import java.lang.reflect.Field
  * ```
  */
 data class PropertyAccessor(
-    val realName : String,
-    val resolvedName : String,
-    val handle : MethodHandle,
-    val type : Class<*>)
-{
-    /**
-     * Retrieve the current value of the bound field from [instance].
-     *
-     * @param instance An object whose class (or superclass) declares the field associated with this accessor.
-     * @return The field's value (boxed if primitive, nullable).
-     * @throws Throwable If the underlying `MethodHandle` rejects the call (rare under normal usage).
-     */
-    fun get(instance: Any) : Any? = handle.invoke(instance)
+	val realName: String,
+	val resolvedName: String,
+	val handle: MethodHandle,
+	val type: Class<*>
+) {
+	
+	/**
+	 * Retrieve the current value of the bound field from [instance].
+	 *
+	 * @param instance An object whose class (or superclass) declares the field associated with this accessor.
+	 * @return The field's value (boxed if primitive, nullable).
+	 * @throws Throwable If the underlying `MethodHandle` rejects the call (rare under normal usage).
+	 */
+	fun get(instance: Any): Any? = handle.invoke(instance)
 }

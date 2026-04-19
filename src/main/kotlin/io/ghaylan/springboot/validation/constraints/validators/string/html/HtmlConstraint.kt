@@ -5,9 +5,9 @@ import io.ghaylan.springboot.validation.constraints.message.MessageMetadata
 import kotlin.reflect.KClass
 
 data class HtmlConstraint(
-    val allowedTags : Set<String>,
-    val allowedAttrs : Set<String>,
-    val allowedProtocols : Set<String>,
-    override val groups: Set<KClass<*>>,
-    override val messages : Set<MessageMetadata>
-) : ConstraintMetadata()
+	val allowedTags: Set<String>,
+	val allowedAttrs: Set<String>,
+	val allowedProtocols: Set<String>,
+	override val groups: Set<KClass<*>>,
+	override val messages: Set<MessageMetadata>
+): ConstraintMetadata()

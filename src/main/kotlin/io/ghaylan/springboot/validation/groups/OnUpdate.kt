@@ -9,8 +9,8 @@ package io.ghaylan.springboot.validation.groups
  * **Example:**
  * ```kotlin
  * @PutMapping("/users/{id}")
- * @ValidateInput(groups = [UpdateGroup::class])
+ * @ValidateInput(groups = [OnUpdate::class])
  * fun updateUser(@RequestBody dto: UserDTO)
  * ```
  */
-interface UpdateGroup
+interface OnUpdate

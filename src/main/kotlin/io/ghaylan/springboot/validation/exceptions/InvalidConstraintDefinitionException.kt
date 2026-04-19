@@ -19,7 +19,7 @@ import io.ghaylan.springboot.validation.constraints.ConstraintMetadata
  * @param cause The underlying exception that triggered this error, if any.
  */
 class InvalidConstraintDefinitionException(
-    message: String,
-    val constraint: ConstraintMetadata,
-    cause: Throwable? = null
-) : RuntimeException("${constraint.javaClass.name} error: $message", cause)
+	message: String,
+	val constraint: ConstraintMetadata,
+	cause: Throwable? = null
+): RuntimeException("${constraint.javaClass.name} error: $message", cause)

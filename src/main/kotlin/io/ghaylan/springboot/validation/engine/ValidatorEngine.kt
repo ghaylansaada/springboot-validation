@@ -1,22 +1,20 @@
 package io.ghaylan.springboot.validation.engine
 
-import io.ghaylan.springboot.validation.exceptions.ConstraintViolationException
 import io.ghaylan.springboot.validation.accessor.FieldAccessor
-import io.ghaylan.springboot.validation.utils.ReflectionUtils.TypeInfo
-import io.ghaylan.springboot.validation.utils.ReflectionUtils.TypeKind
 import io.ghaylan.springboot.validation.constraints.ConstraintMetadata
 import io.ghaylan.springboot.validation.constraints.ConstraintValidator
-import io.ghaylan.springboot.validation.groups.DefaultGroup
+import io.ghaylan.springboot.validation.exceptions.ConstraintViolationException
+import io.ghaylan.springboot.validation.groups.OnDefault
 import io.ghaylan.springboot.validation.integration.ValidationRegistry
 import io.ghaylan.springboot.validation.model.ValidationContext
+import io.ghaylan.springboot.validation.model.ValidationContextValue
 import io.ghaylan.springboot.validation.model.errors.ApiError
 import io.ghaylan.springboot.validation.model.errors.ApiError.ErrorLocation
-import io.ghaylan.springboot.validation.model.ValidationContextValue
 import io.ghaylan.springboot.validation.schema.RequestInputSchema.PropertySpec
 import io.ghaylan.springboot.validation.utils.CollectionUtils
-import java.util.Locale
-import kotlin.collections.ifEmpty
-import kotlin.collections.iterator
+import io.ghaylan.springboot.validation.utils.ReflectionUtils.TypeInfo
+import io.ghaylan.springboot.validation.utils.ReflectionUtils.TypeKind
+import java.util.*
 import kotlin.reflect.KClass
 
 /**
@@ -54,8 +52,8 @@ import kotlin.reflect.KClass
  * - **Comprehensive**: Collects all errors for detailed feedback (e.g., form validation).
  *
  * ### 4. Validation Groups
- * - Supports context-sensitive validation using groups (e.g., `CreateGroup`, `UpdateGroup`).
- * - Defaults to [DefaultGroup] if no groups are specified.
+ * - Supports context-sensitive validation using groups (e.g., `OnCreate`, `OnUpdate`).
+ * - Defaults to [OnDefault] if no groups are specified.
  *
  * ### 5. Performance Optimizations
  * - **Stateless Design**: Thread-safe with no mutable state.
@@ -88,7 +86,7 @@ import kotlin.reflect.KClass
  * val engine = ValidatorEngine(validationContainer)
  * engine.validate<User>(
  *     params = user,
- *     groups = arrayOf(CreateGroup::class),
+ *     groups = arrayOf(OnCreate::class),
  *     singleErrorPerField = false)
  * ```
  *
@@ -129,8 +127,8 @@ import kotlin.reflect.KClass
  *
  * @param validationRegistry The schema repository for resolving and caching validation metadata.
  */
-open class ValidatorEngine(val validationRegistry : ValidationRegistry)
-{
+open class ValidatorEngine(val validationRegistry : ValidationRegistry) {
+	
     /**
      * Represents a unique key for identifying a [ApiError] using a combination of its [field], [code], and [location].
      *
@@ -142,8 +140,7 @@ open class ValidatorEngine(val validationRegistry : ValidationRegistry)
      * - [location]: The location in the request body or path where the error occurred (e.g. nested object path).
      */
     data class ErrorKey(val field: String?, val code: Any?, val location: ErrorLocation?)
-
-
+	
 
     /**
      * Validates a Kotlin object or collection of type [T] against its registered or dynamically created schema.
@@ -156,18 +153,18 @@ open class ValidatorEngine(val validationRegistry : ValidationRegistry)
      * - Dynamically generates and caches a schema for [T] if not already registered in [validationRegistry].
      * - Supports nested objects and collections (including multi-dimensional arrays).
      * - Collects all [ApiError]s and throws a [ConstraintViolationException] if validation fails.
-     * - Supports validation groups for context-sensitive rules (e.g., `CreateGroup`, `UpdateGroup`).
+     * - Supports validation groups for context-sensitive rules (e.g., `OnCreate`, `OnUpdate`).
      * - Offers fail-fast (one error per field) or comprehensive (all errors) modes.
      *
      * ### Validation Groups
      * Controls which constraints are evaluated based on their group annotations.
      * Only constraints belonging to groups intersecting with [groups] are checked.
-     * By default, this includes only the [DefaultGroup].
+     * By default, this includes only the [OnDefault].
      *
      * Typical usages:
-     * - `groups = arrayOf(DefaultGroup::class)` — default validation rules.
-     * - `groups = arrayOf(CreateGroup::class)`  — stricter rules for creation flows.
-     * - `groups = arrayOf(UpdateGroup::class)`  — relaxed rules for partial updates.
+     * - `groups = arrayOf(OnDefault::class)` — default validation rules.
+     * - `groups = arrayOf(OnCreate::class)`  — stricter rules for creation flows.
+     * - `groups = arrayOf(OnUpdate::class)`  — relaxed rules for partial updates.
      *
      * ### Error Accumulation Policy
      * - When [singleErrorPerField] is `true`, validation stops at the first failing constraint *per field*,
@@ -180,7 +177,7 @@ open class ValidatorEngine(val validationRegistry : ValidationRegistry)
      * @param location The source of the data (default: [ErrorLocation.BODY]).
      * @param locale The locale for error messages (default: [Locale.ENGLISH]).
      * @param singleErrorPerField If `true`, stops at the first error per field; if `false`, collects all errors.
-     * @param groups Validation groups to apply (default: [DefaultGroup]).
+     * @param groups Validation groups to apply (default: [OnDefault]).
      *
      * ### Throws
      * @throws IllegalStateException If schema creation fails for [T].
@@ -195,8 +192,9 @@ open class ValidatorEngine(val validationRegistry : ValidationRegistry)
         location : ErrorLocation = ErrorLocation.BODY,
         locale : Locale = Locale.ENGLISH,
         singleErrorPerField : Boolean = true,
-        groups : Array<KClass<*>> = arrayOf(DefaultGroup::class))
-    {
+        groups : Array<KClass<*>> = arrayOf(OnDefault::class)
+	) {
+		
         // Resolve the compiled schema for T (type info + field specs). Must be registered beforehand.
         val schema = validationRegistry.resolveSchemaByClass(T::class.java)
 
@@ -240,7 +238,6 @@ open class ValidatorEngine(val validationRegistry : ValidationRegistry)
         deduplicateErrors(errors)
     }
 
-
     /**
      * Returns a standardized language tag in the format `"ll-CC"`,
      * where `ll` is the ISO 639-1 two-letter lowercase language code
@@ -259,11 +256,9 @@ open class ValidatorEngine(val validationRegistry : ValidationRegistry)
      * @param locale The locale from which to extract the language and country codes.
      * @return A string in `"ll-CC"` format representing the given locale.
      */
-    fun standardizeLanguage(locale: Locale) : String
-    {
+    fun standardizeLanguage(locale: Locale) : String {
         return "${locale.language}-${locale.country}"
     }
-
 
     /**
      * Validates all enabled parts of an incoming HTTP request against its registered validation schema.
@@ -314,8 +309,8 @@ open class ValidatorEngine(val validationRegistry : ValidationRegistry)
         headers : Map<String, Any?>?,
         pathVariables : Map<String, Any?>?,
         locale : Locale = Locale.ENGLISH
-    ) : List<ApiError>
-    {
+    ) : List<ApiError> {
+		
         // 1) Resolve schema for this route+verb combination. Fail fast if not registered.
         val schema = validationRegistry.getSchemaByRequest(id) ?: error("No validation schema found for request $id.")
 
@@ -343,8 +338,7 @@ open class ValidatorEngine(val validationRegistry : ValidationRegistry)
             containerObject = null)
 
         // ---------------- Body ----------------
-        if (schema.validationConfig.validateBody && schema.requestBody.isNotEmpty())
-        {
+        if (schema.validationConfig.validateBody && schema.requestBody.isNotEmpty()) {
             // Uses validate() which handles both objects and arrays (incl. multi-dimensional).
             // `forceNonEmpty = true` ensures empty or null root arrays still validate index [0].
 
@@ -357,8 +351,7 @@ open class ValidatorEngine(val validationRegistry : ValidationRegistry)
         }
 
         // ---------------- Query ----------------
-        if (schema.validationConfig.validateQuery && schema.queryParams.isNotEmpty())
-        {
+        if (schema.validationConfig.validateQuery && schema.queryParams.isNotEmpty()) {
             // Build a currentObject wrapper for the query param map
             val currentValueCtx = ValidationContextValue<Any>(
                 value = params,
@@ -383,8 +376,7 @@ open class ValidatorEngine(val validationRegistry : ValidationRegistry)
         }
 
         // ---------------- Headers ----------------
-        if (schema.validationConfig.validateHeaders && schema.headers.isNotEmpty())
-        {
+        if (schema.validationConfig.validateHeaders && schema.headers.isNotEmpty()) {
             // Build currentObject wrapper for headers map
             val currentValueCtx = ValidationContextValue<Any>(
                 value = headers,
@@ -409,8 +401,7 @@ open class ValidatorEngine(val validationRegistry : ValidationRegistry)
         }
 
         // ------------- Path Variables ------------
-        if (schema.validationConfig.validatePathVariables && schema.pathVariables.isNotEmpty())
-        {
+        if (schema.validationConfig.validatePathVariables && schema.pathVariables.isNotEmpty()) {
             // Build currentObject wrapper for path variables map
             val currentValueCtx = ValidationContextValue<Any>(
                 value = pathVariables,
@@ -436,8 +427,7 @@ open class ValidatorEngine(val validationRegistry : ValidationRegistry)
 
         return deduplicateErrors(errors)
     }
-
-
+	
     /**
      * Deduplicates and return constraint validation errors.
      *
@@ -450,15 +440,13 @@ open class ValidatorEngine(val validationRegistry : ValidationRegistry)
      * This is optimized for large lists and preserves the first occurrence of each unique error.
      * Use this at the end of validation (e.g., in `validate()` or `validateRequest()`).
      */
-    fun deduplicateErrors(errors: List<ApiError>) : List<ApiError>
-    {
+    fun deduplicateErrors(errors: List<ApiError>) : List<ApiError> {
         if (errors.isEmpty()) return errors
 
         val seen = HashSet<ErrorKey>()
         val unique = ArrayList<ApiError>(errors.size)
 
-        for (error in errors)
-        {
+        for (error in errors) {
             val key = ErrorKey(error.path, error.code, error.location)
 
             if (seen.add(key)) {
@@ -468,8 +456,7 @@ open class ValidatorEngine(val validationRegistry : ValidationRegistry)
 
         return unique
     }
-
-
+	
     /**
      * Entrypoint to validate:
      * 1. A **single DTO object** and all its nested properties.
@@ -528,10 +515,9 @@ open class ValidatorEngine(val validationRegistry : ValidationRegistry)
         type : TypeInfo,
         fields: Map<String, PropertySpec>,
         context: ValidationContext,
-        errors: MutableList<ApiError>)
-    {
-        if (type.isArray)
-        {
+        errors: MutableList<ApiError>
+	) {
+        if (type.isArray) {
             // 🔁 Root is a list/array → recursively validate all elements (including nested arrays).
             // `forceNonEmpty = true` ensures that even empty lists will trigger element-level validation,
             // producing paths like "[0]" to indicate missing items when root is array.
@@ -547,8 +533,7 @@ open class ValidatorEngine(val validationRegistry : ValidationRegistry)
                 // no root-level constraints in this generic validation entry point
                 constraints = emptyMap())
         }
-        else if (type.isObject)
-        {
+        else if (type.isObject) {
             // 🔍 Root is a DTO → validate all its properties recursively.
             // Handles nested DTOs, field-level constraints, and path tracking.
             validateFields(
@@ -559,15 +544,12 @@ open class ValidatorEngine(val validationRegistry : ValidationRegistry)
                 context = context,
                 errors = errors)
         }
-        else
-        {
+        else {
             // ❌ Scalars or primitive types are invalid as root DTOs.
             // The engine is built to validate objects or arrays of objects only.
-
             error("Param must be an object or an array of objects to be validated.")
         }
     }
-
 
     /**
      * Recursively validates an array or list of any depth and element type.
@@ -638,8 +620,8 @@ open class ValidatorEngine(val validationRegistry : ValidationRegistry)
         context: ValidationContext,
         errors: MutableList<ApiError>,
         forceNonEmpty: Boolean,
-        constraints: Map<ConstraintMetadata, ConstraintValidator<*, *>>)
-    {
+        constraints: Map<ConstraintMetadata, ConstraintValidator<*, *>>
+	) {
         // Element type at the next level (may be scalar, object, map, or another array).
         val elementType = type.typeArguments.first()
 
@@ -654,10 +636,9 @@ open class ValidatorEngine(val validationRegistry : ValidationRegistry)
             schema = schema,
             type = type)
 
-        suspend fun validateAsContainerIfApplicable()
-        {
+        suspend fun validateAsContainerIfApplicable() {
+			
             if (constraints.any { it.key.appliesToContainer }) {
-
                 validateValue(
                     value = params,
                     context = context,
@@ -666,8 +647,7 @@ open class ValidatorEngine(val validationRegistry : ValidationRegistry)
             }
         }
 
-        when
-        {
+        when {
             // ----- Case 1: Current level is an array-of-arrays (multi-dimensional) -----
             type.isArrayOfArrays -> {
 
@@ -741,7 +721,6 @@ open class ValidatorEngine(val validationRegistry : ValidationRegistry)
         }
     }
 
-
     /**
      * Recursively validates all declared fields on an object or container type.
      *
@@ -783,8 +762,8 @@ open class ValidatorEngine(val validationRegistry : ValidationRegistry)
         parentType : TypeInfo?,
         fields : Map<String, PropertySpec>,
         context : ValidationContext,
-        errors : MutableList<ApiError>)
-    {
+        errors : MutableList<ApiError>
+	) {
         // Iterate through each field defined in the schema
         fields.forEach { (_, field) ->
 
@@ -794,8 +773,7 @@ open class ValidatorEngine(val validationRegistry : ValidationRegistry)
 
             // If the field is an array/list, build a read-only, indexable view for cross-element rules.
             // NOTE: zero‑copy when possible; nulls are filtered only if present.
-            val arrayValueCtx = if (field.typeInfo.isArray)
-            {
+            val arrayValueCtx = if (field.typeInfo.isArray) {
                 ValidationContextValue(
                     // normalized list of elements (non-null)
                     value = CollectionUtils.normalizeList(value),
@@ -806,8 +784,7 @@ open class ValidatorEngine(val validationRegistry : ValidationRegistry)
             }
             // If current type is object or map that have a reference to its parent array (if exists) then delegate it
             // to the items of the array for cross-element validation.
-            else if ((type.isObject || type.isMap) && (parentType?.isArrayOfObjects == true || parentType?.isArrayOfMaps == true))
-            {
+            else if ((type.isObject || type.isMap) && (parentType?.isArrayOfObjects == true || parentType?.isArrayOfMaps == true)) {
                 context.array
             }
             else null
@@ -847,8 +824,7 @@ open class ValidatorEngine(val validationRegistry : ValidationRegistry)
             // Descend further based on the field’s shape:
             // - Arrays/lists → delegate to validateArray (elements + nested objects if any).
             // - Single nested object → recurse into its fields.
-            if (field.typeInfo.isArray)
-            {
+            if (field.typeInfo.isArray) {
                 // Arrays/lists (of scalars or objects): validate container + elements.
                 // `forceNonEmpty = true` ensures constraints on the element itself can fire consistently.
                 validateArray(
@@ -860,8 +836,7 @@ open class ValidatorEngine(val validationRegistry : ValidationRegistry)
                     forceNonEmpty = true,
                     constraints = field.constraints)
             }
-            else if (field.typeInfo.isObject)
-            {
+            else if (field.typeInfo.isObject) {
                 // Single nested object: recurse into its declared fields.
                 validateFields(
                     param = value,
@@ -873,8 +848,7 @@ open class ValidatorEngine(val validationRegistry : ValidationRegistry)
             }
         }
     }
-
-
+	
     /**
      * Validates a flat collection of key-value pairs such as query parameters, HTTP headers, or path variables.
      *
@@ -904,8 +878,8 @@ open class ValidatorEngine(val validationRegistry : ValidationRegistry)
         params : Map<String, Any?>?,
         schema : Map<String, PropertySpec>,
         context: ValidationContext,
-        errors: MutableList<ApiError>)
-    {
+        errors: MutableList<ApiError>
+	) {
         // If no schema rules exist, skip validation entirely.
         if (schema.isEmpty()) return
 
@@ -928,8 +902,7 @@ open class ValidatorEngine(val validationRegistry : ValidationRegistry)
 
             // If the parameter represents a scalar array (e.g., list of strings),
             // validate each element separately.
-            if (param.typeInfo.isArrayOfScalars)
-            {
+            if (param.typeInfo.isArrayOfScalars) {
                 // Normalize the value to a list of non-null elements for iteration.
                 val elements = CollectionUtils.normalizeList(value)
 
@@ -964,8 +937,7 @@ open class ValidatorEngine(val validationRegistry : ValidationRegistry)
             }
         }
     }
-
-
+	
     /**
      * Appends a field (property) name to an existing dot-delimited path.
      *
@@ -990,8 +962,7 @@ open class ValidatorEngine(val validationRegistry : ValidationRegistry)
      * @param child  The next field name to append (may be empty to skip).
      * @return       A new field path string that combines both segments.
      */
-    private fun appendPath(base: String, child: String): String
-    {
+    private fun appendPath(base: String, child: String): String {
         // If child is empty, we skip appending and return the base path unchanged.
         if (child.isEmpty()) return base
 
@@ -1001,7 +972,6 @@ open class ValidatorEngine(val validationRegistry : ValidationRegistry)
         // Otherwise, join the base and child segments with a dot to form "base.child".
         return "$base.$child"
     }
-
 
     /**
      * Appends an array index segment to a field path.
@@ -1026,13 +996,11 @@ open class ValidatorEngine(val validationRegistry : ValidationRegistry)
      * @param idx  Zero-based array index to append.
      * @return The composed path including the new index segment.
      */
-    private fun appendIndex(base: String, idx: Int): String
-    {
+    private fun appendIndex(base: String, idx: Int): String {
         // If we're at the root (empty path), return only the bracketed index: "[idx]"
         // Otherwise, append "[idx]" to the existing path (no dot before bracketed indices).
         return if (base.isEmpty()) "[$idx]" else "$base[$idx]"
     }
-
 
     /**
      * Validates a single field value against its associated set of constraints.
@@ -1062,23 +1030,20 @@ open class ValidatorEngine(val validationRegistry : ValidationRegistry)
         value: Any?,
         context: ValidationContext,
         errors: MutableList<ApiError>,
-        constraints: Map<ConstraintMetadata, ConstraintValidator<*, *>>)
-    {
+        constraints: Map<ConstraintMetadata, ConstraintValidator<*, *>>
+	) {
         // --- Early exit: no constraints to run ---
         if (constraints.isEmpty()) return
 
         // --- Mode 1: stop on first error (used for compact error payloads) ---
-        if (context.stopOnFirstError)
-        {
+        if (context.stopOnFirstError) {
             // Iterate over each constraint in the order it was defined
-            for (constraint in constraints)
-            {
+            for (constraint in constraints) {
                 // Ask the validator to validate the current value in the current context
                 val error = constraint.value.runValidation(value, constraint.key, context)
 
                 // If validation failed (returned an error), record it and stop fu
-                if (error != null)
-                {
+                if (error != null) {
                     // add the error to the accumulator list
                     errors += error
                     // short-circuit: no further constraints are evaluated for this field
@@ -1087,8 +1052,7 @@ open class ValidatorEngine(val validationRegistry : ValidationRegistry)
             }
         }
         // --- Mode 2: accumulate all errors (used for rich error reporting) ---
-        else
-        {
+        else {
             // Iterate over all constraints and add any error returned by the validator
             constraints.forEach {
                 // validate() returns null if success, an ApiError if validation fails

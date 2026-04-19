@@ -1,9 +1,9 @@
 package io.ghaylan.springboot.validation.constraints
 
-import io.ghaylan.springboot.validation.model.ValidationContext
-import io.ghaylan.springboot.validation.model.errors.ApiError
 import io.ghaylan.springboot.validation.ext.extractLanguage
 import io.ghaylan.springboot.validation.ext.normalizeLanguageTag
+import io.ghaylan.springboot.validation.model.ValidationContext
+import io.ghaylan.springboot.validation.model.errors.ApiError
 import io.ghaylan.springboot.validation.model.errors.ApiErrorCode
 
 /**
@@ -21,8 +21,7 @@ import io.ghaylan.springboot.validation.model.errors.ApiErrorCode
  * @param Value The type of the value being validated.
  * @param Constraint The specific constraint metadata type associated with this validator.
  */
-abstract class ConstraintValidator<Value, Constraint : ConstraintMetadata>
-{
+abstract class ConstraintValidator<Value, Constraint: ConstraintMetadata> {
 
     /**
      * Executes validation on the provided [value] using the specified [constraint] metadata
@@ -43,8 +42,7 @@ abstract class ConstraintValidator<Value, Constraint : ConstraintMetadata>
         value: Any?,
         constraint: ConstraintMetadata,
         context: ValidationContext
-    ) : ApiError?
-    {
+    ): ApiError? {
         if (!shouldValidate(constraint = constraint as Constraint, context = context)) return null
 
         val error = validate(
@@ -58,7 +56,6 @@ abstract class ConstraintValidator<Value, Constraint : ConstraintMetadata>
             location = context.location,
             message = getMessage(error = error, constraint = constraint, context = context))
     }
-
 
     /**
      * Selects the best localized error message to return based on the [error] code,
@@ -82,17 +79,15 @@ abstract class ConstraintValidator<Value, Constraint : ConstraintMetadata>
         error: ApiError,
         constraint: Constraint,
         context: ValidationContext
-    ) : String
-    {
+    ): String {
         val contextLang = context.language.normalizeLanguageTag()
         val contextLangShort = contextLang.extractLanguage()
         var exactMatch: String? = null
         var partialMatch: String? = null
         var anyMatch: String? = null
         var englishFallback: String? = null
-
-        for (msg in constraint.messages)
-        {
+	    
+	    for (msg in constraint.messages) {
             anyMatch = msg.text
 
             val msgLang = msg.language.normalizeLanguageTag()
@@ -118,7 +113,6 @@ abstract class ConstraintValidator<Value, Constraint : ConstraintMetadata>
         return exactMatch ?: partialMatch ?: englishFallback ?: anyMatch ?: error.message ?: ""
     }
 
-
     /**
      * Determines if the given [constraint] should be validated within the current [context]
      * by checking the intersection of validation groups.
@@ -136,8 +130,7 @@ abstract class ConstraintValidator<Value, Constraint : ConstraintMetadata>
     private fun shouldValidate(
         constraint : Constraint,
         context : ValidationContext
-    ) : Boolean
-    {
+    ): Boolean {
         // Fast exit: if constraint has no groups, always validate
         if (constraint.groups.isEmpty()) return true
 
@@ -158,7 +151,6 @@ abstract class ConstraintValidator<Value, Constraint : ConstraintMetadata>
         return false
     }
 
-
     /**
      * Abstract function that concrete validators must implement to perform the actual validation logic.
      *
@@ -172,9 +164,8 @@ abstract class ConstraintValidator<Value, Constraint : ConstraintMetadata>
         constraint: Constraint,
         context: ValidationContext,
     ) : ApiError?
-
-
-    /**
+	
+	/**
      * Helper function to retrieve a property value from the context's container object schema by property [name].
      *
      * @param name The name of the property to retrieve.
@@ -184,16 +175,14 @@ abstract class ConstraintValidator<Value, Constraint : ConstraintMetadata>
     protected fun getPropertyValue(
         name : String,
         context : ValidationContext
-    ) : Any?
-    {
+	): Any? {
         return context.containerObject
             ?.schema[name]
             ?.accessor
             ?.getFromAny(context.containerObject.value)
     }
-
-
-    /**
+	
+	/**
      * Returns the set of [ApiErrorCode]s that this validator can produce.
      *
      * Each code represents a specific validation error that may occur when this

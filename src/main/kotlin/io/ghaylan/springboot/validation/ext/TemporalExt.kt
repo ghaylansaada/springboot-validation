@@ -1,12 +1,6 @@
 package io.ghaylan.springboot.validation.ext
 
-import java.time.Instant
-import java.time.LocalDate
-import java.time.LocalDateTime
-import java.time.LocalTime
-import java.time.OffsetDateTime
-import java.time.OffsetTime
-import java.time.ZonedDateTime
+import java.time.*
 import java.time.temporal.Temporal
 import kotlin.reflect.KClass
 
@@ -47,7 +41,6 @@ fun Temporal.isBeforeOrEqual(other: Temporal): Boolean = compareTemporal(this, o
  */
 fun Temporal.isAfterOrEqual(other: Temporal): Boolean = compareTemporal(this, other) >= 0
 
-
 /**
  * Returns the current instance of the same temporal type as this [Temporal].
  *
@@ -59,18 +52,16 @@ fun Temporal.isAfterOrEqual(other: Temporal): Boolean = compareTemporal(this, ot
  * @receiver The temporal type to get the current value for.
  * @return Current temporal of the same type.
  */
-internal fun Temporal.now() : Temporal
-{
-    return when (this)
-    {
-        is LocalDate -> LocalDate.now()
-        is LocalTime -> LocalTime.now()
-        is OffsetTime -> OffsetTime.now()
-        is LocalDateTime -> LocalDateTime.now()
-        is ZonedDateTime -> ZonedDateTime.now()
-        is OffsetDateTime -> OffsetDateTime.now()
-        else -> Instant.now()
-    }
+internal fun Temporal.now(): Temporal {
+	return when (this) {
+		is LocalDate -> LocalDate.now()
+		is LocalTime -> LocalTime.now()
+		is OffsetTime -> OffsetTime.now()
+		is LocalDateTime -> LocalDateTime.now()
+		is ZonedDateTime -> ZonedDateTime.now()
+		is OffsetDateTime -> OffsetDateTime.now()
+		else -> Instant.now()
+	}
 }
 
 /**
@@ -83,19 +74,17 @@ internal fun Temporal.now() : Temporal
  * @return A temporal instance of type [clazz].
  * @throws IllegalArgumentException If the temporal type is unsupported.
  */
-internal fun String.toTemporal(clazz : KClass<out Temporal>) : Temporal
-{
-    return when (clazz)
-    {
-        LocalDate::class -> LocalDate.parse(this)
-        LocalTime::class -> LocalTime.parse(this)
-        OffsetTime::class -> OffsetTime.parse(this)
-        LocalDateTime::class -> LocalDateTime.parse(this)
-        ZonedDateTime::class -> ZonedDateTime.parse(this)
-        OffsetDateTime::class -> OffsetDateTime.parse(this)
-        Instant::class -> Instant.parse(this)
-        else -> throw IllegalArgumentException("Unsupported temporal type: ${clazz.java.name}")
-    }
+internal fun String.toTemporal(clazz: KClass<out Temporal>): Temporal {
+	return when (clazz) {
+		LocalDate::class -> LocalDate.parse(this)
+		LocalTime::class -> LocalTime.parse(this)
+		OffsetTime::class -> OffsetTime.parse(this)
+		LocalDateTime::class -> LocalDateTime.parse(this)
+		ZonedDateTime::class -> ZonedDateTime.parse(this)
+		OffsetDateTime::class -> OffsetDateTime.parse(this)
+		Instant::class -> Instant.parse(this)
+		else -> throw IllegalArgumentException("Unsupported temporal type: ${clazz.java.name}")
+	}
 }
 
 /**
@@ -106,17 +95,18 @@ internal fun String.toTemporal(clazz : KClass<out Temporal>) : Temporal
  * @return Negative if value1 < value2, zero if equal, positive if value1 > value2.
  * @throws IllegalArgumentException If the temporal types are unsupported or mismatched.
  */
-private fun compareTemporal(value1: Temporal, value2: Temporal): Int
-{
-    return when (value1)
-    {
-        is LocalDate if value2 is LocalDate -> value1.compareTo(value2)
-        is LocalTime if value2 is LocalTime -> value1.compareTo(value2)
-        is LocalDateTime if value2 is LocalDateTime -> value1.compareTo(value2)
-        is ZonedDateTime if value2 is ZonedDateTime -> value1.compareTo(value2)
-        is OffsetDateTime if value2 is OffsetDateTime -> value1.compareTo(value2)
-        is OffsetTime if value2 is OffsetTime -> value1.compareTo(value2)
-        is Instant if value2 is Instant -> value1.compareTo(value2)
-        else -> throw IllegalArgumentException("Unsupported or mismatched Temporal types: ${value1::class.simpleName} vs ${value2::class.simpleName}")
-    }
+private fun compareTemporal(
+	value1: Temporal,
+	value2: Temporal
+): Int {
+	return when (value1) {
+		is LocalDate if value2 is LocalDate -> value1.compareTo(value2)
+		is LocalTime if value2 is LocalTime -> value1.compareTo(value2)
+		is LocalDateTime if value2 is LocalDateTime -> value1.compareTo(value2)
+		is ZonedDateTime if value2 is ZonedDateTime -> value1.compareTo(value2)
+		is OffsetDateTime if value2 is OffsetDateTime -> value1.compareTo(value2)
+		is OffsetTime if value2 is OffsetTime -> value1.compareTo(value2)
+		is Instant if value2 is Instant -> value1.compareTo(value2)
+		else -> throw IllegalArgumentException("Unsupported or mismatched Temporal types: ${value1::class.simpleName} vs ${value2::class.simpleName}")
+	}
 }

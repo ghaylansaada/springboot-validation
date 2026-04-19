@@ -30,9 +30,7 @@ import io.swagger.v3.oas.annotations.media.Schema
  */
 @Schema(name = "ApiError", description = "Detailed error entry for failed API request.")
 data class ApiError(
-
-    @Schema(
-        description = """
+	@Schema(description = """
             Fully qualified path of the invalid parameter relative to the request model. 
             Null if the error is not tied to a specific parameter.
             Examples:
@@ -44,67 +42,49 @@ data class ApiError(
             - `"field[0][1].nested"`
             - `"[0]nested"
             - `"[0][1].nested"`
-            """,
-        nullable = true,
-        example = "param")
-    val path: String? = null,
-
-    @Schema(
-        description = "Classification of the error.",
-        enumAsRef = true,
-        example = "REQUIRED_VIOLATION",
-        implementation = ApiErrorCode::class)
-    val code: Enum<*>? = null,
-
-    @Schema(
-        description = "Localized, human-readable error message.",
-        example = "Param is required",
-        nullable = true)
-    var message: String? = null,
-
-    @Schema(
-        description = "Location in the request where the invalid value originated.",
-        enumAsRef = true,
-        example = "QUERY",
-        implementation = ErrorLocation::class)
-    val location: ErrorLocation? = null,
-
-    @Schema(
-        description = "Optional additional context data for the error.",
-        example = """{ "key": "value" }""",
-        nullable = true)
-    val data : Any? = null)
-{
-    /**
-     * Internal map of localized messages keyed by language code.
-     * Used during message resolution before being cleared.
-     */
-    @Schema(hidden = true)
-    @JsonIgnore
-    var messages : Map<String, String>? = null
-
-
-
-    /**
-     * Lists the high-level location within an HTTP request that produced a validation error.
-     *
-     * Use these to help clients decide how to highlight or map errors back to UI inputs.
-     */
-    enum class ErrorLocation
-    {
-        /** Error in a URL query parameter. */
-        QUERY,
-
-        /** Error in an HTTP header value. */
-        HEADER,
-
-        /** Error in a URI path variable (templated segment). */
-        PATH,
-
-        /** Error in the request body payload (e.g., JSON, XML, form, multipart). */
-        BODY,
-
-        /** Error from business logic, not tied to a specific field. */
-        BUSINESS
-    }
+            """, nullable = true, example = "param")
+	val path: String? = null,
+	@Schema(description = "Classification of the error.", enumAsRef = true, example = "REQUIRED_VIOLATION", implementation = ApiErrorCode::class)
+	val code: Enum<*>? = null,
+	@Schema(description = "Localized, human-readable error message.", example = "Param is required", nullable = true)
+	var message: String? = null,
+	@Schema(description = "Location in the request where the invalid value originated.",
+		enumAsRef = true,
+		example = "QUERY",
+		implementation = ErrorLocation::class)
+	val location: ErrorLocation? = null,
+	@Schema(description = "Optional additional context data for the error.", example = """{ "key": "value" }""", nullable = true)
+	val data: Any? = null
+) {
+	
+	/**
+	 * Internal map of localized messages keyed by language code.
+	 * Used during message resolution before being cleared.
+	 */
+	@Schema(hidden = true)
+	@JsonIgnore
+	var messages: Map<String, String>? = null
+	
+	/**
+	 * Lists the high-level location within an HTTP request that produced a validation error.
+	 *
+	 * Use these to help clients decide how to highlight or map errors back to UI inputs.
+	 */
+	enum class ErrorLocation {
+		
+		/** Error in a URL query parameter. */
+		QUERY,
+		
+		/** Error in an HTTP header value. */
+		HEADER,
+		
+		/** Error in a URI path variable (templated segment). */
+		PATH,
+		
+		/** Error in the request body payload (e.g., JSON, XML, form, multipart). */
+		BODY,
+		
+		/** Error from business logic, not tied to a specific field. */
+		BUSINESS
+	}
 }

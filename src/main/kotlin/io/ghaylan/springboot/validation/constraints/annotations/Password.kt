@@ -4,7 +4,7 @@ import io.ghaylan.springboot.validation.constraints.Constraint
 import io.ghaylan.springboot.validation.constraints.message.Message
 import io.ghaylan.springboot.validation.constraints.validators.string.password.PasswordConstraint
 import io.ghaylan.springboot.validation.constraints.validators.string.password.PasswordValidator
-import io.ghaylan.springboot.validation.groups.DefaultGroup
+import io.ghaylan.springboot.validation.groups.OnDefault
 import kotlin.reflect.KClass
 
 /**
@@ -85,7 +85,7 @@ import kotlin.reflect.KClass
  * @property groups Specifies the validation groups this constraint belongs to.
  *                  Validation groups enable selective validation by grouping constraints,
  *                  allowing the constraint to be applied only during validation runs targeting those groups.
- *                  Defaults to the `DefaultGroup` if none are specified.
+ *                  Defaults to the `OnDefault` if none are specified.
  * @property messages Optional array of [Message] annotations for overriding
  *                   default error messages with localized, error-code-specific messages.
  */
@@ -94,19 +94,20 @@ import kotlin.reflect.KClass
 @Retention(AnnotationRetention.RUNTIME)
 @Target(AnnotationTarget.FIELD, AnnotationTarget.VALUE_PARAMETER)
 annotation class Password(
-    val minLength : Int = 6,
-    val maxLength : Int = 64,
-    val requireUppercase : Boolean = false,
-    val requireLowercase : Boolean = false,
-    val requireDigit : Boolean = false,
-    val requireSpecialChar: Boolean = false,
-    val allowedSpecialChars : String = "!@#$%^&*()-_=+[{]};:,<.>/?",
-    val minEntropy : PasswordStrength = PasswordStrength.VERY_WEAK,
-    val noSequentialChars : Boolean = false,
-    val noRepetitivePatterns : Boolean = false,
-    val groups: Array<KClass<*>> = [DefaultGroup::class],
-    val messages : Array<Message> = [])
-{
+	val minLength: Int = 6,
+	val maxLength: Int = 64,
+	val requireUppercase: Boolean = false,
+	val requireLowercase: Boolean = false,
+	val requireDigit: Boolean = false,
+	val requireSpecialChar: Boolean = false,
+	val allowedSpecialChars: String = "!@#$%^&*()-_=+[{]};:,<.>/?",
+	val minEntropy: PasswordStrength = PasswordStrength.VERY_WEAK,
+	val noSequentialChars: Boolean = false,
+	val noRepetitivePatterns: Boolean = false,
+	val groups: Array<KClass<*>> = [OnDefault::class],
+	val messages: Array<Message> = []
+) {
+	
 	/**
 	 * Defines password strength levels based on Shannon entropy.
 	 *
@@ -122,20 +123,20 @@ annotation class Password(
 	 *
 	 * @param entropy The minimum Shannon entropy required in bits.
 	 */
-	enum class PasswordStrength(val entropy : Int)
-	{
+	enum class PasswordStrength(val entropy: Int) {
+		
 		/** Very weak passwords with minimal entropy (0+ bits) */
 		VERY_WEAK(0),
-
+		
 		/** Weak passwords with basic entropy (28+ bits) */
 		WEAK(28),
-
+		
 		/** Moderately strong passwords (36+ bits) */
 		MODERATE(36),
-
+		
 		/** Strong passwords suitable for most security needs (60+ bits) */
 		STRONG(60),
-
+		
 		/** Very strong passwords for high-security applications (128+ bits) */
 		VERY_STRONG(128)
 	}
