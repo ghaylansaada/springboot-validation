@@ -1,9 +1,9 @@
 package io.ghaylan.springboot.validation.constraints.validators.temporal.future
 
 import io.ghaylan.springboot.validation.constraints.ConstraintMetadata
-import io.ghaylan.springboot.validation.constraints.message.MessageMetadata
 import kotlin.reflect.KClass
 
+/** Constraint metadata for [@Future][io.ghaylan.springboot.validation.constraints.annotations.Future]. */
 data class FutureConstraint(
 	val withinSeconds: Long = 0,
 	val withinMinutes: Long = 0,
@@ -13,5 +13,5 @@ data class FutureConstraint(
 	val withinMonths: Long = 0,
 	val withinYears: Long = 0,
 	override val groups: Set<KClass<*>>,
-	override val messages: Set<MessageMetadata>
+	override val message: String
 ): ConstraintMetadata()

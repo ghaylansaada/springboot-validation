@@ -9,6 +9,7 @@ import java.time.LocalTime
 import java.time.OffsetTime
 import java.time.format.TextStyle
 import java.time.temporal.Temporal
+import java.util.*
 
 object AllowedDaysValidator: ConstraintValidator<Temporal, AllowedDaysConstraint>() {
 	
@@ -24,10 +25,11 @@ object AllowedDaysValidator: ConstraintValidator<Temporal, AllowedDaysConstraint
 		val dayOfWeek = runCatching {
 			DayOfWeek.from(value)
 		}.getOrNull()
+			?: return null
 		
 		if (constraint.days.contains(dayOfWeek)) return null
 		val displayedDays = constraint.days.joinToString(", ", transform = {
-			it.getDisplayName(TextStyle.FULL, context.locale)
+			it.getDisplayName(TextStyle.FULL, Locale.ENGLISH)
 		})
 		
 		return ApiError(code = ApiErrorCode.DAY_OF_WEEK_VIOLATION, message = "Must fall on one of the following days: $displayedDays")

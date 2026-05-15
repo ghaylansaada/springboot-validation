@@ -4,54 +4,22 @@ import java.time.*
 import java.time.temporal.Temporal
 import kotlin.reflect.KClass
 
-/**
- * Compares this [Temporal] to another [Temporal] to check if it occurs before the other.
- *
- * @receiver The temporal instance to compare.
- * @param other The temporal instance to compare against.
- * @return `true` if this temporal is before [other], `false` otherwise.
- */
+/** Returns `true` if this temporal is strictly before [other]. Both must be the same type. */
 fun Temporal.isBefore(other: Temporal): Boolean = compareTemporal(this, other) < 0
 
-/**
- * Compares this [Temporal] to another [Temporal] to check if it occurs after the other.
- *
- * @return `true` if this temporal is after [other], `false` otherwise.
- */
+/** Returns `true` if this temporal is strictly after [other]. Both must be the same type. */
 fun Temporal.isAfter(other: Temporal): Boolean = compareTemporal(this, other) > 0
 
-/**
- * Compares this [Temporal] to another [Temporal] to check if they are equal.
- *
- * @return `true` if this temporal is equal to [other], `false` otherwise.
- */
+/** Returns `true` if this temporal equals [other] by chronological comparison. */
 fun Temporal.isEqual(other: Temporal): Boolean = compareTemporal(this, other) == 0
 
-/**
- * Checks if this [Temporal] is before or equal to another [Temporal].
- *
- * @return `true` if this temporal is before or equal to [other], `false` otherwise.
- */
+/** Returns `true` if this temporal is before or equal to [other]. */
 fun Temporal.isBeforeOrEqual(other: Temporal): Boolean = compareTemporal(this, other) <= 0
 
-/**
- * Checks if this [Temporal] is after or equal to another [Temporal].
- *
- * @return `true` if this temporal is after or equal to [other], `false` otherwise.
- */
+/** Returns `true` if this temporal is after or equal to [other]. */
 fun Temporal.isAfterOrEqual(other: Temporal): Boolean = compareTemporal(this, other) >= 0
 
-/**
- * Returns the current instance of the same temporal type as this [Temporal].
- *
- * Example:
- * ```
- * LocalDate.now() == LocalDate().now()
- * ```
- *
- * @receiver The temporal type to get the current value for.
- * @return Current temporal of the same type.
- */
+/** Returns the current moment as the same concrete [Temporal] type as the receiver. */
 internal fun Temporal.now(): Temporal {
 	return when (this) {
 		is LocalDate -> LocalDate.now()

@@ -1,66 +1,10 @@
 package io.ghaylan.springboot.validation.utils
 
 /**
- * A utility object providing optimized, read‑only views and normalization helpers
- * for arrays and collections. Its primary purpose is to **normalize arbitrary inputs**
- * into a canonical `List<Any>` representation without unnecessary allocations.
+ * Normalizes arrays and collections into a null-free, read-only `List<Any>`.
  *
- * ---
- * ### Responsibilities
- *
- * - Provide a unified, **null‑free**, indexable `List<Any>` view over different input types:
- *   * Kotlin/JVM reference arrays (`Array<T?>`)
- *   * Primitive arrays (`IntArray`, `ByteArray`, etc.)
- *   * Standard `List<*>` implementations
- *   * Other `Collection<*>` types (e.g., `Set`, `Queue`)
- * - Avoid **element copies** and **extra allocations** whenever possible:
- *   * Uses **zero‑copy** wrappers for arrays and lists when no `null` elements are present.
- *   * Allocates a new `ArrayList` **only** when input contains `null`s or is a non‑list `Collection`.
- * - Expose **read‑only** views to prevent accidental mutation of underlying data.
- *
- * ---
- * ### Null‑handling
- *
- * - Any `null` values are **filtered out** from the resulting list.
- * - For empty inputs, the function returns `emptyList()`.
- * - If the entire array/collection is `null`, the function also returns `emptyList()`.
- *
- * ---
- * ### Example Usage
- *
- * ```kotlin
- * // Reference array without nulls -> zero-copy, read-only view
- * val arr = arrayOf("a", "b", "c")
- * val list = CollectionUtils.normalizeList(arr)
- * println(list) // [a, b, c]
- *
- * // List with nulls -> new ArrayList without nulls
- * val input = listOf("x", null, "y")
- * val result = CollectionUtils.normalizeList(input)
- * println(result) // [x, y]
- *
- * // Primitive array -> boxed, read-only view
- * val ints = intArrayOf(1, 2, 3)
- * val boxed = CollectionUtils.normalizeList(ints)
- * println(boxed) // [1, 2, 3]
- * ```
- *
- * ---
- * ### Design Notes
- *
- * - The returned lists from zero‑copy paths are **read‑only wrappers** using
- *   `AbstractList`, ensuring no mutation of the underlying arrays or lists.
- * - Non‑`List` collections (e.g., `Set`) are copied into an `ArrayList` to preserve
- *   **deterministic index order**.
- * - Performance has been tuned for large inputs:
- *   * Null checks are **O(n)** but zero‑allocation.
- *   * Primitive arrays leverage Kotlin's native `asList()`, which is a boxing, read‑only view.
- *
- * ---
- * ### Complexity
- *
- * - **Time**: O(n) worst‑case (for null filtering); O(1) when returning a view directly.
- * - **Space**: O(1) when returning a view; O(n) only when filtering or copying is required.
+ * Uses zero-copy wrappers when possible; allocates only when nulls must be filtered
+ * or a non-list Collection must be copied for stable index order.
  */
 object CollectionUtils {
 	

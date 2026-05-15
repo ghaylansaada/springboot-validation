@@ -1,16 +1,4 @@
 package io.ghaylan.springboot.validation.groups
 
-/**
- * Marker interface for the **Create** validation group.
- *
- * Use this group to associate constraints that should only apply when
- * **creating** a resource or entity.
- *
- * **Example:**
- * ```kotlin
- * @PostMapping("/users")
- * @ValidateInput(groups = [OnCreate::class])
- * fun createUser(@RequestBody dto: UserDTO)
- * ```
- */
+/** Validation group for create operations; constraints in this group are skipped during updates. */
 interface OnCreate

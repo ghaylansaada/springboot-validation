@@ -1,62 +1,16 @@
 package io.ghaylan.springboot.validation.constraints
 
-import io.ghaylan.springboot.validation.constraints.message.Message
-import io.ghaylan.springboot.validation.constraints.message.MessageMetadata
 import kotlin.reflect.*
 import kotlin.reflect.jvm.jvmName
 
 /**
- * Converts annotation-based validation definitions into pure metadata representations.
- *
- * `ConstraintConverter` provides a centralized and recursive mechanism for converting custom validation annotations
- * (e.g., `@ValueIn`, `@Required`, etc.) into corresponding [ConstraintMetadata] data classes. These metadata objects
- * are used by the validation engine to perform runtime checks based on declarative rules.
- *
- * This conversion is essential for systems that aim to decouple annotation parsing from validation logic,
- * allowing schema construction and validation to operate independently from raw annotations.
- *
- * ### Key Capabilities:
- * - **Constructor-Based Mapping**: Matches annotation properties with metadata class constructor parameters by name.
- * - **Smart Type Coercion**: Automatically converts `Array<KClass<*>>` to `Set<KClass<*>>` for validation groups and validators, and handles other known mismatches.
- * - **Nested Annotation Support**: Recursively resolves and converts annotations embedded within annotations.
- * - **Strong Runtime Validation**: Detects mismatched types and missing parameters, providing descriptive error messages to aid debugging.
- *
- * ### Example:
- * ```kotlin
- * @Constraint(
- *     metadata = ValueInConstraintMetadata::class,
- *     validatedBy = [ValueInValidator::class]
- * )
- * annotation class ValueIn(val values: Array<String>, val groups: Array<KClass<*>> = [], val by: Array<KClass<*>> = [])
- *
- * data class ValueInConstraintMetadata(
- *     val values: Set<String>,
- *     override val groups: Set<KClass<*>>,
- *     override val by: Set<KClass<*>>
- * ) : ConstraintMetadata
- *
- * val ann = instanceOf(ValueIn::class)
- * val metadata = ann.toMetadataSafely() // → ValueInConstraintMetadata
- * ```
- *
- * This mechanism is commonly used in schema parsing and validation frameworks to extract reusable metadata from annotations.
+ * Converts constraint annotations into [ConstraintMetadata] instances by matching annotation
+ * properties to metadata constructor parameters. Handles type coercion (e.g., `Array<KClass<*>>`
+ * to `Set<KClass<*>>`), nested annotations, and runtime type validation.
  */
 object ConstraintConverter {
 
-    /**
-     * Converts this annotation instance into a corresponding [ConstraintMetadata] object.
-     *
-     * This method inspects the annotation's `@Constraint` metadata, finds the linked metadata class,
-     * and builds an instance of it using values extracted from the annotation.
-     *
-     * - Matches annotation property names with metadata constructor parameters.
-     * - Converts known special cases (e.g., `groups` and `by` as `Array<KClass<*>>` to `Set<KClass<*>>`).
-     * - Recursively resolves and converts nested annotations.
-     * - Validates type compatibility at runtime and throws meaningful exceptions on mismatch.
-     *
-     * @return A constructed instance of the corresponding [ConstraintMetadata] subclass.
-     * @throws IllegalStateException if the annotation is not marked with `@Constraint`, or if required mapping fails.
-     */
+    /** Converts this annotation to its corresponding [ConstraintMetadata] via reflective constructor mapping. */
     fun Annotation.convertToMetadata(): ConstraintMetadata {
         val constraintAnn = this.annotationClass.annotations
             .find { it is Constraint } as? Constraint
@@ -88,9 +42,6 @@ object ConstraintConverter {
                     val mappedValues = value.map {
 
                         when (it) {
-                            is Message -> {
-                                MessageMetadata(text = it.text, language = it.lang)
-                            }
                             is Annotation if ConstraintMetadata::class.java.isAssignableFrom(it.javaClass) -> it.convertToMetadata()
                             is Class<*> -> it.kotlin
                             else -> it

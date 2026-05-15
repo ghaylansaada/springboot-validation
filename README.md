@@ -11,14 +11,21 @@ mechanisms in several key ways:
 - **Schema-based**: Generates optimized validation schemas at startup or runtime
 - **High-performance**: Precomputes field accessors and avoids reflection in the hot path
 - **AOP-driven**: Automatically validates controller inputs via simple annotation
-- **API-friendly errors**: Structured, localized error responses suitable for REST APIs
+- **API-friendly errors**: Structured error responses with error codes, field paths, and locations
 - **Dynamic validation**: Supports runtime schema generation for dynamic payloads
 - **Manual validation**: Powerful error collection API for custom validation logic
 
 Perfect for applications with complex validation requirements, high performance needs, or API-first designs.
 
-> **Note**: Currently, this framework is coroutine-first and primarily designed for Kotlin coroutines with Spring
-> WebFlux. It also supports Spring WebFlux without coroutines, but traditional Spring WebMVC is not supported.
+> **Note**: This framework is coroutine-first and primarily designed for Kotlin coroutines with Spring WebFlux.
+> It also supports Spring WebFlux without coroutines (`Mono`/`Flux`), but traditional Spring WebMVC is not supported.
+
+## Requirements
+
+- **JDK**: 25+
+- **Kotlin**: 2.3+
+- **Spring Boot**: 4.0+
+- **Spring WebFlux** (required — WebMVC is not supported)
 
 ## Table of Contents
 
@@ -27,6 +34,7 @@ Perfect for applications with complex validation requirements, high performance 
 - [Getting Started](#getting-started)
 - [Usage Examples](#usage-examples)
 - [Built-in Constraints](#built-in-constraints)
+- [Constraint Reference](#constraint-reference)
 - [Error Handling](#error-handling)
 - [Extending the Framework](#extending-the-framework)
 - [Performance Considerations](#performance-considerations)
@@ -35,15 +43,18 @@ Perfect for applications with complex validation requirements, high performance 
 ## Features
 
 - **Schema-based validation**: Pre-computed validation schemas for performance
-- **Zero-reflection runtime**: Uses compiled accessors for field values
+- **Zero-reflection runtime**: Uses compiled accessors (VarHandle, MethodHandle) for field values
 - **Lightweight and fast**: Optimized for high-throughput applications
-- **Spring Boot integration**: Auto-configuration with minimal setup
-- **Comprehensive constraints**: Rich set of built-in validators
-- **Localized messages**: Multi-language error messages out of the box
-- **Flexible API responses**: Structured error format for API clients
-- **Dynamic validation**: Support for runtime schema generation
-- **Manual validation mode**: Full control over validation flow when needed
-- **Integration with WebFlux**: Support for reactive applications and Kotlin coroutines
+- **Spring Boot auto-configuration**: Zero-config setup with `@AutoConfiguration`
+- **45+ built-in constraints**: Rich set of validators covering strings, numbers, temporals, collections, and more
+- **Flexible API responses**: Structured `ApiError` format with field paths, error codes, and locations
+- **Dynamic validation**: Support for runtime schema generation for arbitrary classes
+- **Manual validation mode**: Fluent `ApiErrorCollector` API for business rule validation
+- **Validation groups**: Context-sensitive rules with `OnCreate`, `OnUpdate`, `OnDefault`, or custom groups
+- **Cross-field validation**: Compare properties within the same object (`@EqualTo`, `@GreaterThan`, `@LessThan`, etc.)
+- **Conditional requirements**: `@Required` with `IF_DEPENDENT_NULL` / `IF_DEPENDENT_NOT_NULL` conditions
+- **Nested & recursive validation**: Deep validation of nested objects, arrays, and multi-dimensional collections
+- **WebFlux integration**: Native support for `Mono`, `Flux`, `Flow`, and `suspend` functions
 
 ## How It Works
 
@@ -51,7 +62,7 @@ The validation framework operates through a series of steps that span from appli
 handling. The core principle is to perform all expensive operations (reflection, annotation processing) at startup and
 use cached components during request validation for optimal performance.
 
-### Startup Process: Caching Validators
+### Startup Phase 1: Discovering Validators
 
 When the application starts:
 
@@ -59,63 +70,46 @@ When the application starts:
 2. For each constraint found, it:
     - Maps the annotation to its metadata class (specified in the `metadata` property)
     - Collects all validator classes from the `validatedBy` array
-    - Obtains validator instances through:
-        - Existing singletons (Kotlin objects)
-        - Spring beans (`@Bean`, `@Component`)
-        - Direct instantiation via empty constructor
-3. Validators are cached in `ValidationRegistry` in a map structure where:
-    - The outer key is the constraint metadata class type
-    - The inner key is the value type the validator can handle
-    - The value is the validator instance itself
+    - Obtains validator instances through (in order):
+        1. Kotlin `object` singleton
+        2. Spring-managed bean
+        3. Autowiring via `AutowireCapableBeanFactory`
+        4. No-arg constructor fallback
+3. Validators are cached in `ValidationRegistry` in a nested map:
+    - **Outer key**: constraint metadata class (`KClass<out ConstraintMetadata>`)
+    - **Inner key**: supported value type (`TypeInfo`)
+    - **Value**: validator instance
 
-This creates an optimized lookup system that can quickly match a constraint with the appropriate validator for any given
-value type.
-
-### Startup Process: Building Request Schemas
+### Startup Phase 2: Building Request Schemas
 
 After caching validators, the framework:
 
 1. Finds all controller methods annotated with `@ValidateInput`
-2. For each method, it analyzes:
-    - The request body class and all nested fields
-    - Path variables
-    - Query parameters
-    - HTTP headers
-3. For each field, parameter, or property:
-    - Extracts constraint annotations using reflection
-    - Converts annotations to metadata objects
-    - Matches with appropriate validator instances from the cache
-    - Retrieves (or creates and caches) a field accessor from `AccessorRegistry`
-    - Packages everything into a `PropertySpec` object
-4. Creates a complete request schema containing:
-    - Maps of all path variables, headers, query params, and request body fields
-    - Links to their respective validators and field accessors
-    - Validation configuration from the `@ValidateInput` annotation
-5. Registers the schema in `ValidationRegistry`, indexed by a unique request ID
+2. For each method, analyzes all parameter annotations:
+    - `@RequestBody` — request body class and all nested fields
+    - `@PathVariable` — path variables
+    - `@RequestParam` — query parameters
+    - `@RequestHeader` — HTTP headers
+3. For each field or parameter:
+    - Extracts constraint annotations and converts them to `ConstraintMetadata` via `ConstraintConverter`
+    - Matches each constraint with the most compatible validator (exact type, supertype, wildcard, or `Any`)
+    - Builds or retrieves a cached `FieldAccessor` from `AccessorRegistry`
+    - Packages everything into a `PropertySpec`
+4. Creates a complete `RequestInputSchema` containing maps of all path variables, headers, query params, and body fields
+5. Registers the schema in `ValidationRegistry`, indexed by a unique method identifier
 
-At this point, every endpoint has a complete validation schema with cached accessors, validators, and constraint
-metadata - all created without needing to access annotations or use reflection at runtime.
+### Runtime Validation
 
-### Runtime Validation Process
+When a request arrives:
 
-When a request comes in:
-
-1. The `ValidationAspect` intercepts calls to methods annotated with `@ValidateInput`
-2. It extracts the request body, query parameters, headers, and path variables
-3. Generates a unique ID for the controller method and retrieves its cached schema
-4. Passes everything to the `ValidatorEngine` for validation
-5. The engine systematically validates each enabled part of the request:
-    - For each field in the schema, it:
-        - Retrieves the field's value using the cached accessor (no reflection)
-        - Applies each constraint by invoking its cached validator with its metadata
-        - If validation fails, collects an error with field path, code, and message
-    - For nested objects or collections, recursively validates using nested schema parts
-6. If any errors are found, throws a `ConstraintViolationException` with all errors
-7. If validation passes, allows the controller method to execute normally
-
-This approach ensures validation is performed with minimal overhead, as all expensive operations were moved to the
-application startup phase. During actual request processing, the framework simply walks through pre-computed validation
-paths and applies pre-instantiated validators.
+1. `ValidationAspect` intercepts methods annotated with `@ValidateInput`
+2. `WebFluxValidationHandler` resolves reactive parameters (`Mono`, `Flux`, `Flow`) non-blockingly
+3. `ValidatorEngine` validates each enabled section (body, query, headers, path):
+    - Retrieves field values using cached accessors (no reflection)
+    - Applies each constraint via cached validators
+    - Builds precise field paths (`user.address[0].city`)
+    - Collects `ApiError` instances with codes, paths, and optional messages
+4. Deduplicates errors and throws `ConstraintViolationException` if any violations exist
 
 ## Getting Started
 
@@ -139,37 +133,38 @@ dependencies {
 </dependency>
 ```
 
-### Enable Auto-configuration
+### Auto-Configuration
 
-The library auto-configures itself when added to a Spring Boot application. Just add the dependency, and it will:
+The library auto-configures itself via Spring Boot's `@AutoConfiguration`. Adding the dependency automatically
+registers:
 
-1. Register all necessary beans
-2. Set up the validation aspect
-3. Configure exception handlers
-4. Build validation schemas at startup
+- `ServerWebExchangeContextFilter` — reactive web context access
+- `ValidationRegistry` — validator and schema cache
+- `ValidatorEngine` — validation execution engine
+- `ValidationAspect` — AOP-based validation interceptor
 
-No additional configuration is required - the framework is designed to work out of the box with sensible defaults.
+All beans use `@ConditionalOnMissingBean`, so you can override any component by providing your own bean.
 
 ## Usage Examples
 
 ### 1. Automatic Validation with @ValidateInput
 
-The `@ValidateInput` annotation provides several configuration options:
+The `@ValidateInput` annotation enables automatic validation on controller methods:
 
 ```kotlin
 @Target(AnnotationTarget.FUNCTION)
 @Retention(AnnotationRetention.RUNTIME)
 annotation class ValidateInput(
-    val validateBody: Boolean = true,        // Whether to validate request body
-    val validateQuery: Boolean = true,       // Whether to validate query parameters
-    val validatePath: Boolean = true,        // Whether to validate path variables
-    val validateHeaders: Boolean = true,     // Whether to validate request headers
-    val singleErrorPerField: Boolean = true, // Stop after first error on a field
+    val validateBody: Boolean = true,
+    val validateQuery: Boolean = true,
+    val validatePath: Boolean = true,
+    val validateHeaders: Boolean = true,
+    val singleErrorPerField: Boolean = true,
     val groups: Array<KClass<*>> = [OnDefault::class]
-) // Validation groups to apply
+)
 ```
 
-Example usage in a controller:
+Example controller:
 
 ```kotlin
 @RestController
@@ -177,17 +172,13 @@ Example usage in a controller:
 class UserController(private val userService: UserService) {
 
     @PostMapping
-    @ValidateInput(
-        validateBody = true,
-        validateQuery = true,
-        validateHeaders = false,
-        singleErrorPerField = true, groups = [OnCreate::class])
+    @ValidateInput(groups = [OnCreate::class])
     suspend fun createUser(@RequestBody user: UserDTO): UserDTO {
         return userService.createUser(user)
     }
 
     @PutMapping("/{id}")
-    @ValidateInput(groups = [OnUpdate::class])
+    @ValidateInput(groups = [OnUpdate::class], validateHeaders = false)
     suspend fun updateUser(
         @PathVariable id: Long,
         @RequestBody user: UserDTO
@@ -199,483 +190,595 @@ class UserController(private val userService: UserService) {
 
 ### Validation Groups
 
-Validation groups allow you to apply different validation rules depending on the context:
+Groups allow different validation rules depending on the context:
 
 ```kotlin
 data class UserDTO(
-    // Applied in both create and update
-	@Required(groups = [OnCreate::class, OnUpdate::class])
+    @field:Required(groups = [OnCreate::class, OnUpdate::class])
     val id: Long?,
 
-    // Only required when creating
-	@Required(groups = [OnCreate::class])
-	@Email(groups = [OnCreate::class, OnUpdate::class])
+    @field:Required(groups = [OnCreate::class])
+    @field:Email(groups = [OnCreate::class, OnUpdate::class])
     val email: String?,
 
-    // Required and validated only when creating
-	@Required(groups = [OnCreate::class])
-	@StringLength(min = 8, max = 100, groups = [OnCreate::class])
-    val password: String?)
+    @field:Required(groups = [OnCreate::class])
+    @field:TextLength(min = 8, max = 100, groups = [OnCreate::class])
+    @field:Password(
+        requireUppercase = true, requireDigit = true,
+        groups = [OnCreate::class])
+    val password: String?,
+
+    @field:EqualTo(property = "password", groups = [OnCreate::class])
+    val confirmPassword: String?
+)
 ```
 
 Built-in groups:
 
-- `OnDefault`: Default group used when no group is specified
-- `OnCreate`: Commonly used for creation operations
-- `OnUpdate`: Commonly used for update operations
+- `OnDefault` — default group, used when no group is specified
+- `OnCreate` — for creation operations
+- `OnUpdate` — for update operations
 
-You can also create custom groups by defining marker interfaces:
+Create custom groups by defining marker interfaces:
 
 ```kotlin
-interface AdminGroup
-interface ProfileGroup
+interface OnAdmin
+interface OnPublic
 ```
 
 ### 2. Dynamic Validation (Runtime Schema)
 
-For cases when you need to validate objects dynamically (e.g., user-uploaded schemas):
+Validate arbitrary objects at runtime — schemas are created and cached on demand:
 
 ```kotlin
 @Service
 class DynamicValidationService(private val validatorEngine: ValidatorEngine) {
 
-    suspend fun validateDynamicObject(data: Any, locale: Locale = Locale.getDefault()) {
-        // Dynamically validate any object - schema will be created on demand
+    suspend fun validateObject(data: Any) {
         validatorEngine.validate(
             params = data,
-            locale = locale,
-            singleErrorPerField = false, groups = arrayOf(OnDefault::class))
+            singleErrorPerField = false,
+            groups = arrayOf(OnDefault::class)
+        )
     }
 }
 ```
 
 ### 3. Manual Validation with ApiErrorCollector
 
-For complex validation logic or business rules that can't be expressed with annotations:
+For business rules that can't be expressed with annotations:
 
 ```kotlin
 @Service
 class OrderService(private val repository: OrderRepository) {
 
-    suspend fun placeOrder(order: OrderDTO, locale: Locale): Order {
-        val collector = ApiErrorCollector(locale)
+    suspend fun placeOrder(order: OrderDTO): Order {
+        val collector = ApiErrorCollector()
 
-        // We can use collector.body { … }, collector.header { … }, collector.path { … }, 
-        // collector.query { … }, collector.business { … } to add errors at different locations
-
-        // Validate business rules with BUSINESS error location
         if (order.items.isEmpty()) {
-            // Add error code (Must be an enum)
-            collector.business()
-                .code(ErrorCodes.ORDER_EMPTY)
+            collector.business(OrderErrorCode.ORDER_EMPTY)
                 .data("order_id", order.id)
-                .msgEnglish("Order must contain at least one item")
-                .msgFrench("La commande doit contenir au moins un article")
-                .msg("es", "El pedido debe contener al menos un artículo")
+                .message("Order must contain at least one item")
         }
 
-        // Throw if any errors were collected
+        if (order.total < 0) {
+            collector.body(OrderErrorCode.INVALID_TOTAL)
+                .field("total")
+                .message("Total cannot be negative")
+        }
+
+        // Throws ConstraintViolationException if any errors collected
         collector.throwIfNotEmpty()
 
-        // Process the order if valid
         return repository.saveOrder(order)
     }
 }
 ```
 
+The collector supports all error locations: `body()`, `query()`, `header()`, `path()`, `business()`.
+
+Each error builder supports: `.field()`, `.data()`, and `.message()`.
+
 ## Common Constraint Properties
 
-All constraints support these common properties:
+All constraints share these properties:
 
-### Groups
+### groups
 
-Validation groups control when constraints are applied:
+Controls when the constraint is applied:
 
 ```kotlin
 @field:Required(groups = [OnCreate::class, OnUpdate::class])
 val name: String?
 ```
 
-### Messages
+### message
 
-Define localized error messages for constraints:
+Optional error message override:
 
 ```kotlin
-@field:Email(messages = [
-    ErrorMessage(lang = "en", text = "Invalid email format"),
-    ErrorMessage(lang = "fr", text = "Format d'email invalide"),
-    ErrorMessage(lang = "de", text = "Ungültiges E-Mail-Format")])
+@field:Email(message = "Please enter a valid email address")
 val email: String?
 ```
 
-Language codes can be specified as:
-
-- Language only: `"en"`, `"fr"`, `"de"`, etc.
-- Language with region: `"en-US"`, `"fr-CA"`, `"de-CH"`, etc.
-
-If no custom message is provided, the framework falls back to default English messages created during validation.
+If not set, the validator provides a default message.
 
 ## Built-in Constraints
 
-The framework provides a rich set of built-in constraints:
+### General
 
-### General Constraints
+| Constraint   | Description | Key Properties |
+|--------------|-------------|----------------|
+| `@Required`  | Ensures a value is not null, empty, or blank | `dependentField`, `condition` |
 
-| Constraint  | Description                          |
-|-------------|--------------------------------------|
-| `@Required` | Ensures a value is not null or empty |
+### String
 
-### String Constraints
+| Constraint       | Description | Key Properties |
+|------------------|-------------|----------------|
+| `@TextLength`    | String length within min/max bounds | `min`, `max` |
+| `@Email`         | Valid email address format | — |
+| `@Regex`         | Matches a regular expression | `pattern` |
+| `@StrOcc`        | String contains/equals/starts/ends with a value | `value`, `mode`, `minOccurrences`, `maxOccurrences`, `ignoreCase` |
+| `@NotStrOcc`     | String must NOT contain/equal/start/end with a value | `value`, `mode`, `ignoreCase` |
+| `@Base64`        | Valid Base64 encoded string | — |
+| `@Url`           | Valid URL with type/protocol/extension validation | `type`, `requireHttps`, `allowQueryParams`, `allowedExtensions` |
+| `@Uuid`          | Valid UUID format | — |
+| `@HexColor`      | Valid hex color code (`#FFF` or `#FFFFFF`) | — |
+| `@Html`          | Safe HTML with tag/attribute/protocol whitelisting | `allowedTags`, `allowedAttrs`, `allowedProtocols` |
+| `@IBAN`          | Valid International Bank Account Number | — |
+| `@ISOCountryCode`| Valid ISO 3166-1 alpha-2 country code | — |
+| `@CurrencyCode`  | Valid ISO 4217 currency code | — |
+| `@LanguageCode`  | Valid ISO 639-1 language code (e.g., `"en"`, `"fr"`) | — |
+| `@Phone`         | Valid international phone number | `allowedTypes`, `allowedCountries` |
+| `@CreditCard`    | Valid credit card number (Luhn algorithm) | — |
+| `@Password`      | Configurable password strength validation | `minLength`, `maxLength`, `requireUppercase`, `requireLowercase`, `requireDigit`, `requireSpecialChar`, `allowedSpecialChars`, `minEntropy` |
+| `@Enum`          | Matches enum naming style (`UPPER_SNAKE_CASE`) | `ignoreCase` |
+| `@NBR`           | Valid National Business Registry number | — |
 
-| Constraint        | Description                                           |
-|-------------------|-------------------------------------------------------|
-| `@StringLength`   | Validates string length is between min and max        |
-| `@Email`          | Validates string is a valid email address             |
-| `@Regex`          | Validates string matches a regular expression pattern |
-| `@StrOcc`         | Validates string contains specific text               |
-| `@Base64`         | Validates string is valid Base64 encoded              |
-| `@Url`            | Validates string is a valid URL                       |
-| `@Uuid`           | Validates string is a valid UUID                      |
-| `@HexColor`       | Validates string is a valid hex color code            |
-| `@Html`           | Validates string contains valid HTML                  |
-| `@Iban`           | Validates string is a valid IBAN                      |
-| `@ISOCountryCode` | Validates string is a valid ISO country code          |
-| `@ISOLanguage`    | Validates string is a valid ISO language code         |
-| `@Phone`          | Validates string is a valid phone number              |
-| `@CreditCard`     | Validates string is a valid credit card number        |
-| `@Password`       | Validates string meets password strength requirements |
+### Number
 
-### Number Constraints
+| Constraint     | Description | Key Properties |
+|----------------|-------------|----------------|
+| `@NumberMin`   | Minimum numeric value | `value`, `inclusive` |
+| `@NumberMax`   | Maximum numeric value | `value`, `inclusive` |
+| `@DivisibleBy` | Divisible by a given divisor | `divisor` |
+| `@MultipleOf`  | Multiple of a given factor | `factor` |
+| `@Latitude`    | Valid latitude (−90 to 90) | — |
+| `@Longitude`   | Valid longitude (−180 to 180) | — |
 
-| Constraint     | Description                                           |
-|----------------|-------------------------------------------------------|
-| `@NumberMin`   | Validates number is at least the specified minimum    |
-| `@NumberMax`   | Validates number is at most the specified maximum     |
-| `@DivisibleBy` | Validates number is divisible by the specified value  |
-| `@MultipleOf`  | Validates number is a multiple of the specified value |
-| `@Latitude`    | Validates number is a valid latitude (-90 to 90)      |
-| `@Longitude`   | Validates number is a valid longitude (-180 to 180)   |
+### Cross-Field Comparison
 
-### Comparison Constraints
+These constraints compare the annotated field against another field **in the same object** using the `property` parameter:
 
-| Constraint     | Description                                          |
-|----------------|------------------------------------------------------|
-| `@EqualTo`     | Validates value equals specified value               |
-| `@NotEqualTo`  | Validates value does not equal specified value       |
-| `@GreaterThan` | Validates value is greater than specified value      |
-| `@LessThan`    | Validates value is less than specified value         |
-| `@ValueIn`     | Validates value is in a set of allowed values        |
-| `@ValueNotIn`  | Validates value is not in a set of disallowed values |
+| Constraint     | Description | Key Properties |
+|----------------|-------------|----------------|
+| `@EqualTo`     | Must equal the referenced property | `property` |
+| `@NotEqualTo`  | Must not equal the referenced property | `property` |
+| `@GreaterThan` | Must be greater than the referenced property | `property`, `inclusive` |
+| `@LessThan`    | Must be less than the referenced property | `property`, `inclusive` |
+| `@ValueIn`     | Value must be in a set of allowed string values | `values` |
+| `@ValueNotIn`  | Value must not be in a set of disallowed string values | `values` |
 
-### Collection Constraints
+```kotlin
+data class DateRange(
+    val startDate: LocalDate?,
 
-| Constraint   | Description                                             |
-|--------------|---------------------------------------------------------|
-| `@ArraySize` | Validates array/collection size is between min and max  |
-| `@Distinct`  | Validates array/collection has no duplicate elements    |
-| `@MapSize`   | Validates map has number of entries between min and max |
+    @field:GreaterThan(property = "startDate", inclusive = false)
+    val endDate: LocalDate?
+)
+```
 
-### Temporal Constraints
+### Collection
 
-| Constraint     | Description                                     |
-|----------------|-------------------------------------------------|
-| `@Past`        | Validates date/time is in the past              |
-| `@Future`      | Validates date/time is in the future            |
-| `@TemporalMin` | Validates date/time is after specified minimum  |
-| `@TemporalMax` | Validates date/time is before specified maximum |
-| `@AllowedDays` | Validates date falls on allowed days of week    |
+| Constraint   | Description | Key Properties |
+|--------------|-------------|----------------|
+| `@ArraySize` | Array/collection size within min/max bounds | `min`, `max` |
+| `@Distinct`  | Elements must be unique (by field or combination) | `by`, `mode` |
+| `@MapSize`   | Map entry count within min/max bounds | `min`, `max` |
+
+### Temporal
+
+| Constraint     | Description | Key Properties |
+|----------------|-------------|----------------|
+| `@Past`        | Must be in the past (with optional within-range) | `withinDays`, `withinHours`, `withinMinutes`, ... |
+| `@Future`      | Must be in the future (with optional within-range) | `withinDays`, `withinHours`, `withinMinutes`, ... |
+| `@TemporalMin` | Must be after a specified date/time | `value`, `inclusive` |
+| `@TemporalMax` | Must be before a specified date/time | `value`, `inclusive` |
+| `@AllowedDays` | Must fall on specified days of the week | `days` |
+
+Supported temporal types: `LocalDate`, `LocalTime`, `OffsetTime`, `LocalDateTime`, `ZonedDateTime`, `OffsetDateTime`, `Instant`.
+
+## Constraint Reference
+
+### @Required — Conditional Dependencies
+
+```kotlin
+data class ContactDTO(
+    val email: String?,
+
+    // Required only when email is not provided
+    @field:Required(dependentField = "email", condition = RequirementCondition.IF_DEPENDENT_NULL)
+    val phone: String?,
+
+    // Required only when email IS provided
+    @field:Required(dependentField = "email", condition = RequirementCondition.IF_DEPENDENT_NOT_NULL)
+    val emailVerificationCode: String?
+)
+```
+
+Conditions: `ALWAYS` (default), `IF_DEPENDENT_NULL`, `IF_DEPENDENT_NOT_NULL`.
+
+### @Password — Strength Configuration
+
+```kotlin
+@field:Password(
+    minLength = 12,
+    maxLength = 128,
+    requireUppercase = true,
+    requireLowercase = true,
+    requireDigit = true,
+    requireSpecialChar = true,
+    allowedSpecialChars = "!@#$%^&*",
+    minEntropy = Password.PasswordStrength.STRONG
+)
+val password: String?
+```
+
+Strength levels (Shannon entropy bits): `VERY_WEAK` (0), `WEAK` (28), `MODERATE` (36), `STRONG` (60), `VERY_STRONG` (128).
+
+### @Url — Type-Specific Validation
+
+```kotlin
+@field:Url(type = UrlType.IMAGE, requireHttps = true)
+val avatarUrl: String?
+
+@field:Url(type = UrlType.WEBSITE, allowQueryParams = false)
+val homepage: String?
+
+@field:Url(type = UrlType.VIDEO, allowedExtensions = ["mp4", "webm"])
+val videoUrl: String?
+```
+
+URL types: `GENERIC`, `WEBSITE`, `FILE`, `IMAGE`, `VIDEO`, `AUDIO`. Media types enforce valid file extensions.
+
+### @Future / @Past — Within-Range Constraints
+
+```kotlin
+// Must be in the future, but within the next 30 days
+@field:Future(withinDays = 30)
+val appointmentDate: LocalDateTime?
+
+// Must be in the past, within the last 1 year
+@field:Past(withinYears = 1)
+val dateOfBirth: LocalDate?
+```
+
+Range parameters: `withinSeconds`, `withinMinutes`, `withinHours`, `withinDays`, `withinWeeks`, `withinMonths`, `withinYears`.
+
+### @Distinct — Uniqueness Modes
+
+```kotlin
+// Scalar uniqueness
+@field:Distinct
+val tags: List<String>?
+
+// Unique by a single field
+@field:Distinct(by = ["email"], mode = DistinctMode.PER_FIELD)
+val users: List<UserDTO>?
+
+// Unique by combination of fields
+@field:Distinct(by = ["firstName", "lastName"], mode = DistinctMode.COMBINATION)
+val employees: List<EmployeeDTO>?
+```
+
+Modes: `PER_FIELD` (each field independently unique), `COMBINATION` (unique by tuple of all specified fields).
+
+### @Html — Safe HTML Whitelisting
+
+```kotlin
+@field:Html(
+    allowedTags = ["b", "i", "u", "p", "a", "ul", "li"],
+    allowedAttrs = ["a:href"],
+    allowedProtocols = ["https"]
+)
+val richText: String?
+```
+
+### @Phone — Type and Country Filtering
+
+```kotlin
+@field:Phone(
+    allowedTypes = [PhoneNumberUtil.PhoneNumberType.MOBILE],
+    allowedCountries = ["US", "FR", "TN"]
+)
+val mobilePhone: String?
+```
+
+### @StrOcc — String Occurrence Modes
+
+```kotlin
+@field:StrOcc(value = "http", mode = StrOccMode.STARTS_WITH)
+val url: String?
+
+@field:StrOcc(value = "@", mode = StrOccMode.CONTAINS, minOccurrences = 1, maxOccurrences = 1)
+val email: String?
+
+@field:NotStrOcc(value = "admin", mode = StrOccMode.CONTAINS, ignoreCase = true)
+val username: String?
+```
+
+Modes: `EQUALS`, `CONTAINS`, `STARTS_WITH`, `ENDS_WITH`.
 
 ## Error Handling
 
 ### Error Structure
 
-Validation errors are represented as `ApiError` objects with the following structure:
+Validation errors are represented as `ApiError`:
 
 ```kotlin
 data class ApiError(
-    // Field path (e.g., "user.address.city" or "items[0].quantity")
-    val field: String?,
-
-    // Error code (e.g., ApiErrorCode.REQUIRED, CustomEnum.EMAIL_INVALID)
-    val code: Enum<*>?,
-
-    // Error location (BODY, QUERY, HEADER, PATH, BUSINESS)
-    val location: ErrorLocation?,
-
-    // Localized error message
-    val message: String?,
-
-    // Additional error data (e.g., {"min": 5, "actual": 3})
-    val data: Any?)
+    val path: String?,            // Field path: "user.address[0].city"
+    val code: Enum<*>?,           // Error code: ApiErrorCode.REQUIRED_VIOLATION
+    var message: String?,         // Optional message: "Required"
+    val location: ErrorLocation?, // BODY, QUERY, HEADER, PATH, BUSINESS
+    val data: Any?                // Optional context data
+)
 ```
 
-The `location` property helps categorize errors by source:
+### Error Locations
 
-- `BODY`: Request body errors
-- `QUERY`: Query parameter errors
-- `HEADER`: HTTP header errors
-- `PATH`: Path variable errors
-- `BUSINESS`: Business logic errors
+| Location   | Description |
+|------------|-------------|
+| `BODY`     | Request body field errors |
+| `QUERY`    | Query parameter errors |
+| `HEADER`   | HTTP header errors |
+| `PATH`     | Path variable errors |
+| `BUSINESS` | Business logic errors (manual validation) |
 
 ### Field Path Syntax
 
-The `field` property in `ApiError` represents the path to the invalid value within the request payload.  
-It uses **dot-and-bracket notation**, similar to JSONPath, and supports both object properties and array indices.
+| Path                   | Meaning |
+|------------------------|---------|
+| `field`                | Root object property |
+| `field.nested`         | Nested property |
+| `field[0]`             | Array element |
+| `field[0].name`        | Property inside array element |
+| `field[0][1].name`     | Nested arrays |
+| `[0].name`             | Root-level array element |
 
-#### Example
+### Error Codes
 
-| Field Path             | Meaning                                              |
-|------------------------|------------------------------------------------------|
-| `field`                | Root object property                                 |
-| `field.field`          | Nested property inside an object                     |
-| `field[0]`             | First element of an array                            |
-| `field[0].field`       | Field inside the first array element                 |
-| `field[0][0][0].field` | Deeply nested array element with a field             |
-| `[0].field`            | Field inside the first element of a root-level array |
-| `[0][0].field`         | Field inside nested arrays at the root level         |
-| `field[0]`             | First element of an array under a specific field     |
+All built-in error codes are in the `ApiErrorCode` enum:
+
+```
+REQUIRED_VIOLATION, EQUALITY_VIOLATION, INEQUALITY_VIOLATION,
+GREATER_THAN_VIOLATION, LESS_THAN_VIOLATION, MIN_VALUE_VIOLATION,
+MAX_VALUE_VIOLATION, ALLOWED_VALUE_VIOLATION, DISALLOWED_VALUE_VIOLATION,
+DIVISIBILITY_VIOLATION, MULTIPLICITY_VIOLATION, LATITUDE_VIOLATION,
+LONGITUDE_VIOLATION, PAST_VIOLATION, FUTURE_VIOLATION, DAY_OF_WEEK_VIOLATION,
+BASE64_VIOLATION, ISO_COUNTRY_CODE_VIOLATION, ISO_CURRENCY_CODE_VIOLATION,
+ISO_LANGUAGE_CODE_VIOLATION, CREDIT_CARD_PATTERN_VIOLATION,
+EMAIL_FORMAT_VIOLATION, UUID_PATTERN_VIOLATION, URL_VIOLATION,
+URL_HTTPS_REQUIRED_VIOLATION, URL_QUERY_PARAMS_NOT_ALLOWED_VIOLATION,
+URL_EXTENSION_VIOLATION, URL_TYPE_VIOLATION, HTML_TAG_VIOLATION,
+HTML_VALUE_VIOLATION, HTML_ATTRIBUTE_VIOLATION, HTML_PROTOCOL_VIOLATION,
+STRING_OCCURRENCES_VIOLATION, PATTERN_VIOLATION, PHONE_FORMAT_VIOLATION,
+PHONE_TYPE_VIOLATION, PHONE_COUNTRY_VIOLATION, NBR_FORMAT_VIOLATION,
+IBAN_FORMAT_VIOLATION, HEX_COLOR_CODE_FORMAT_VIOLATION, ENUM_FORMAT_VIOLATION,
+PASSWORD_LENGTH_VIOLATION, PASSWORD_UPPERCASE_VIOLATION,
+PASSWORD_LOWERCASE_VIOLATION, PASSWORD_DIGIT_VIOLATION,
+PASSWORD_SPECIAL_CHAR_VIOLATION, PASSWORD_ENTROPY_VIOLATION,
+STRING_LENGTH_VIOLATION, OBJECT_SIZE_VIOLATION, ARRAY_SIZE_VIOLATION,
+DISTINCT_VALUE_VIOLATION, DEPENDENCY_TYPE_VIOLATION
+```
 
 ### Exception Handling
 
-`ConstraintViolationException` is a runtime exception thrown when validation fails. It contains a list of `ApiError`
-objects.
-
-Since this is a runtime exception, you need to handle it in a custom exception handler to map it to your API response
-format:
+`ConstraintViolationException` is thrown when validation fails. Handle it in a `@RestControllerAdvice`:
 
 ```kotlin
 @RestControllerAdvice
 class GlobalExceptionHandler {
 
     @ExceptionHandler(ConstraintViolationException::class)
-    fun handleConstraintViolation(ex: ConstraintViolationException): ResponseEntity<ErrorResponse> {
-        val errorResponse = ErrorResponse(
-            status = HttpStatus.BAD_REQUEST.value(),
-            message = "Validation failed",
-            errors = ex.errors)
-        
-        return ResponseEntity.badRequest().body(errorResponse)
+    fun handleValidation(ex: ConstraintViolationException): ResponseEntity<ErrorResponse> {
+        return ResponseEntity.badRequest().body(
+            ErrorResponse(
+                status = 400,
+                message = "Validation failed",
+                errors = ex.errors
+            )
+        )
     }
 }
 
 data class ErrorResponse(
     val status: Int,
     val message: String,
-    val errors: List<ApiError>)
-```
-
-### Error Collection Flow
-
-1. **Error Detection**: Validators detect constraint violations during validation
-2. **Error Creation**: Violations are converted to `ApiError` instances with:
-    - Full field path for precise location
-    - Standard error code for programmatic handling
-    - Localized message based on user locale
-    - Additional context data when relevant
-3. **Error Collection**: All errors are collected in a list during validation
-4. **Deduplication**: Duplicate errors are removed based on field/code/location
-5. **Exception Throwing**: `ConstraintViolationException` wraps all errors
-6. **Response Conversion**: Your exception handler converts to HTTP response
-
-### Localized Messages
-
-The framework provides multi-language support for error messages:
-
-```kotlin
-// Define messages in multiple languages
-collector.body()
-    .code(ErrorCodes.INVALID_EMAIL)
-    .field("email")
-    .msgEnglish("Invalid email address")
-    .msgFrnech("Adresse email invalide")
-    .msg("de", "Ungültige E-Mail-Adresse")
-
-// Messages are resolved based on user's locale
-collector.throwIfNotEmpty()
+    val errors: List<ApiError>
+)
 ```
 
 ## Extending the Framework
 
 ### Creating Custom Constraints
 
-1. Define the constraint annotation:
+#### 1. Define the Annotation
 
 ```kotlin
 @Constraint(
-    metadata = MyCustomConstraintMetadata::class,
-    validatedBy = [
-        MyCustomStringValidator::class,
-        MyCustomNumberValidator::class])
+    metadata = SlugConstraint::class,
+    validatedBy = [SlugValidator::class]
+)
 @Target(AnnotationTarget.FIELD, AnnotationTarget.VALUE_PARAMETER)
 @Retention(AnnotationRetention.RUNTIME)
-annotation class MyCustomConstraint(
-    val customValue: String,
+annotation class Slug(
+    val maxLength: Int = 100,
     val groups: Array<KClass<*>> = [OnDefault::class],
-    val messages: Array<ErrorMessage> = [])
+    val message: String = ""
+)
 ```
 
-2. Create the constraint metadata (must match annotation properties):
+#### 2. Create the Metadata Class
+
+Property names must match the annotation properties exactly. The framework uses `ConstraintConverter` to
+automatically map annotation values to the metadata constructor.
 
 ```kotlin
-class MyCustomConstraintMetadata(
-    val customValue: String,
+data class SlugConstraint(
+    val maxLength: Int,
     override val groups: Set<KClass<*>>,
-    override val messages: Map<String, String>? = null
-) : ConstraintMetadata {
-    override val appliesToContainer = false
-}
+    override val message: String
+) : ConstraintMetadata()
 ```
 
-3. Implement validators for different types:
+#### 3. Implement the Validator
 
 ```kotlin
-// String validator
-object MyCustomStringValidator : ConstraintValidator<String, MyCustomConstraintMetadata> {
-    // IMPORTANT: Validators MUST be stateless/singleton
-    // Don't use class variables to store state!
-    
-    override suspend fun validate(value: String?, metadata: MyCustomConstraintMetadata, context: ValidationContext): ApiError? {
-        if (value == null) return null
-        
-        // Custom validation logic here
-        if (!isValid(value, metadata.customValue)) {
-            // Return specific error code and message, 
-            // base validator class `ConstraintValidator` will fill in the rest.
+object SlugValidator : ConstraintValidator<CharSequence, SlugConstraint>() {
+
+    private val SLUG_PATTERN = Pattern.compile("^[a-z0-9]+(?:-[a-z0-9]+)*$")
+
+    override suspend fun validate(
+        value: CharSequence?,
+        constraint: SlugConstraint,
+        context: ValidationContext
+    ): ApiError? {
+        value ?: return null
+
+        if (value.length > constraint.maxLength) {
             return ApiError(
-                code = ErrorCode.CUSTOM_CONSTRAINT_FAILED, 
-                message = "Value doesn't meet custom constraint",
-                data = mapOf("actual" to value, "expected" to metadata.customValue)) // Optional data
+                code = ApiErrorCode.STRING_LENGTH_VIOLATION,
+                message = "Slug must be at most ${constraint.maxLength} characters"
+            )
         }
-        
+
+        if (!SLUG_PATTERN.matcher(value).matches()) {
+            return ApiError(
+                code = ApiErrorCode.PATTERN_VIOLATION,
+                message = "Must be a valid URL slug (lowercase, hyphens only)"
+            )
+        }
+
         return null
     }
-    
-    private fun isValid(value: String, customValue: String): Boolean {
-        // Your custom validation logic
-        return true
-    }
-}
 
-// Number validator for the same constraint
-class MyCustomNumberValidator : ConstraintValidator<Number, MyCustomConstraintMetadata> {
-    // Handle number validation logic
-    // ...
+    override fun applicableErrorCodes(): Array<ApiErrorCode> = arrayOf(
+        ApiErrorCode.STRING_LENGTH_VIOLATION,
+        ApiErrorCode.PATTERN_VIOLATION
+    )
 }
 ```
+
+#### Spring Bean Validators
 
 Validators can be Spring beans to access services or repositories:
 
 ```kotlin
 @Component
-class DatabaseBackedValidator(
-    private val repository: SomeRepository
-) : ConstraintValidator<String, MyCustomConstraintMetadata> {
-    override suspend fun validate(value: String?, metadata: MyCustomConstraintMetadata, context: ValidationContext): ApiError? {
-        // Access repository or other services
-        val isValid = repository.validateSomething(value)
-        // ...
+class UniqueEmailValidator(
+    private val userRepository: UserRepository
+) : ConstraintValidator<CharSequence, UniqueEmailConstraint>() {
+
+    override suspend fun validate(
+        value: CharSequence?,
+        constraint: UniqueEmailConstraint,
+        context: ValidationContext
+    ): ApiError? {
+        value ?: return null
+        if (userRepository.existsByEmail(value.toString())) {
+            return ApiError(
+                code = CustomErrorCode.EMAIL_TAKEN,
+                message = "Email is already in use"
+            )
+        }
+        return null
     }
+
+    override fun applicableErrorCodes() = arrayOf(CustomErrorCode.EMAIL_TAKEN)
 }
 ```
 
-> **Important Notes:**
-> - Constraints are auto-registered - no manual registration is needed
-> - The framework discovers all `@Constraint` annotations, instantiates validators, and generates metadata
-> - Validators MUST be stateless as they are shared across requests
-> - Include `groups` and `messages` in your constraint annotations for consistency
-> - The metadata class should match the annotation properties for automatic mapping
+> **Key rules for custom constraints:**
+> - Constraints are auto-discovered — no manual registration needed
+> - Validators must be **stateless** (they are shared across requests)
+> - Return `null` from `validate()` for null values (null handling is the caller's responsibility via `@Required`)
+> - The `ApiError` returned from `validate()` only needs `code` — `path` and `location` are filled in automatically by the framework. `message` is optional.
+> - Implement `applicableErrorCodes()` to declare which error codes your validator can produce
+> - Metadata constructor parameter names must match annotation property names exactly
 
 ## Performance Considerations
 
-This validation framework is designed for high performance:
-
-### Precomputed Schema
+### Precomputed Schemas
 
 - **One-time analysis**: Field scanning and constraint resolution happen only once at startup
 - **Cached schemas**: Validation schemas are built once and reused for all requests
-- **No reflection at runtime**: Field access is performed through precomputed accessors
+- **No reflection at runtime**: Field access uses precomputed `FieldAccessor` instances
 
-### Fast Field Access
+### Fast Field Access Strategy Ladder
 
-- **Accessor Registry**: Caches fast field access strategies
-- **Optimized strategies**:
-    - VarHandle (Java 9+): Direct memory access, JIT-friendly
-    - MethodHandle: Fast reflection alternative
-    - Standard reflection: Only as fallback
-    - Map lookup: For header/query/param maps
+`AccessorFactory` selects the fastest available strategy:
 
-### Constraint Optimization
-
-- **Metadata Caching**: Annotations are mapped to metadata objects once
-    - Avoids repeated reflection-based annotation reading at runtime
-    - Allows fast access to constraint properties during validation
-    - Enables more efficient constraint validation logic
+1. **Map lookup** — for header/query/param maps
+2. **Public getter** — standard `getX()`/`isX()` methods
+3. **VarHandle** — direct memory access (JVM 9+, near-native performance)
+4. **MethodHandle** — fast reflection alternative via `unreflectGetter`
+5. **Reflection** — `Field.get()` as last resort
 
 ### Validation Optimizations
 
-- **Fail-fast mode**: Stops validation on first error per field
-- **Constraint ordering**: Required constraints checked first
-- **Zero-copy collections**: Minimizes object creation during array normalization
-- **Path building**: Efficient string concatenation for field paths
-- **Error deduplication**: Eliminates duplicate errors
-
-### Performance Benefits
-
-- **Lower latency**: Faster validation execution compared to standard Bean Validation
-- **Reduced memory usage**: Less garbage collection pressure
-- **Better throughput**: Can handle more requests per second
-- **Predictable performance**: Consistent validation times
+- **Fail-fast mode**: `singleErrorPerField = true` stops at first error per field
+- **Constraint ordering**: `@Required` constraints are always checked first
+- **Zero-copy collections**: `CollectionUtils.normalizeList` avoids element copies when possible
+- **Error deduplication**: Removes duplicate errors by `(path, code, location)` tuple
+- **Group filtering**: Efficient set-intersection check skips non-matching constraints
 
 ## Why Use This Framework?
 
-### Advantages over Spring Boot's Built-in Validation
+### Comparison with Standard Bean Validation
 
-| Feature                     | This Framework                                | Standard Bean Validation                    |
-|-----------------------------|-----------------------------------------------|---------------------------------------------|
-| **Performance**             | Optimized field access, no runtime reflection | Relies on reflection for each validation    |
-| **Schema Generation**       | Pre-computed validation schemas               | Schema discovery on each validation         |
-| **Error Structure**         | API-friendly, structured errors               | Limited customization of error format       |
-| **Dynamic Validation**      | First-class support                           | Difficult to implement                      |
-| **Localization**            | Built-in multi-language support               | Requires custom MessageSource configuration |
-| **Validation Groups**       | First-class support                           | Available but with limitations              |
-| **Manual Error Collection** | Rich fluent API                               | Limited programmatic API                    |
-| **Extensibility**           | Easy custom constraints                       | More complex extension model                |
-| **WebFlux Support**         | Native support for reactive & coroutines      | Limited reactive integration                |
+| Feature | This Framework | Bean Validation (JSR-380) |
+|---------|---------------|--------------------------|
+| **Runtime reflection** | None — precomputed accessors | Every validation call |
+| **Schema generation** | Once at startup, cached | On each validation |
+| **Error structure** | API-ready `ApiError` with paths, codes, locations | `ConstraintViolation` requires mapping |
+| **Dynamic validation** | First-class `validate<T>()` API | Difficult to implement |
+| **Error messages** | Optional per-constraint `message` property | Requires `MessageSource` config |
+| **Validation groups** | First-class with `OnCreate`/`OnUpdate`/custom | Available but verbose |
+| **Manual validation** | Fluent `ApiErrorCollector` API | Limited programmatic API |
+| **Cross-field rules** | `@EqualTo`, `@GreaterThan`, conditional `@Required` | Requires class-level validator |
+| **WebFlux support** | Native `Mono`/`Flux`/`Flow`/`suspend` | Limited reactive integration |
+| **Collection validation** | `@Distinct`, `@ArraySize`, nested array paths | Basic `@Size`/`@NotEmpty` |
+| **Custom constraints** | Simple: annotation + metadata + validator | Complex: annotation + validator + message keys |
 
-### When to Use This Framework
+### Ideal For
 
-- **High-performance applications**: When validation speed matters
-- **API-first designs**: For consistent, structured error responses
-- **Complex validation rules**: When you need flexible constraint composition
-- **Dynamic payloads**: When validating structures not known at compile time
-- **Multi-language applications**: For easy localization of error messages
-- **Reactive applications**: When using Spring WebFlux with or without coroutines
-
-### Use Cases
-
-- **API backends**: Clean, structured validation errors for clients
-- **High-throughput systems**: Optimized performance for many requests
-- **Complex domain models**: Rich constraint composition for business rules
-- **Multi-language applications**: Easy error message localization
-- **Dynamic data processing**: Validation of user-defined schemas
-- **Reactive microservices**: Non-blocking validation for WebFlux applications
+- **API backends** — structured error responses with codes, paths, and locations
+- **High-throughput services** — zero-reflection runtime with cached schemas
+- **Complex domain models** — cross-field validation, conditional requirements, nested objects
+- **Reactive microservices** — native WebFlux and coroutine integration
+- **Dynamic data processing** — runtime schema generation for arbitrary payloads
 
 ## License
 
-### MIT License
+MIT License
 
 Copyright (c) 2025 Ghaylan Saada
+
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
 in the Software without restriction, including without limitation the rights
 to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 copies of the Software, and to permit persons to whom the Software is
 furnished to do so, subject to the following conditions:
+
 The above copyright notice and this permission notice shall be included in all
 copies or substantial portions of the Software.
+
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

@@ -5,18 +5,11 @@ import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.contract
 
 /**
- * Checks if this object is considered null, void, or empty based on specific criteria.
+ * Returns `true` if the value is semantically absent: `null`, `Unit`, blank string, empty collection,
+ * or a collection/map whose every element is itself deeply null or empty.
  *
- * The function evaluates various types:
- * - `null` or [Unit] returns `true`.
- * - [Optional] returns `true` if not present.
- * - [Char] returns `true` if it represents an empty string.
- * - [CharSequence] returns `true` if blank.
- * - [Collection], [Sequence], [Array], or [Map] returns `true` if all elements/values are null or void.
- * - Enums return `false`.
- * - Other types return `false`.
- *
- * @return `true` if the object is null, void, or empty according to the defined criteria; `false` otherwise.
+ * Cycle detection via [visited] prevents infinite recursion on self-referential structures.
+ * Enums and all other leaf types return `false` (they are considered present).
  */
 @OptIn(ExperimentalContracts::class)
 fun Any?.isDeepNullOrEmpty(

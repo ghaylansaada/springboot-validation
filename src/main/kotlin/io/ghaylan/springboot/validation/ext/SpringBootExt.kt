@@ -9,16 +9,7 @@ import java.lang.reflect.Method
 import java.lang.reflect.Parameter
 
 /**
- * Retrieves the name of the [RequestParam] annotation for this [Parameter],
- * falling back to the parameter name if necessary.
- *
- * The function checks the following in order:
- * 1. The `name` property of the [RequestParam] annotation.
- * 2. The `value` property of the [RequestParam] annotation.
- * 3. The parameter's declared name.
- *
- * @receiver The [Parameter] from which to extract the request parameter name.
- * @return The first non-blank name found from the [RequestParam] annotation or the parameter itself.
+ * Returns the effective query-parameter name: `@RequestParam.name`, then `.value`, then the parameter's declared name.
  */
 internal fun Parameter.requestParamName(): String {
 	val annotation = getAnnotation(RequestParam::class.java)
@@ -29,16 +20,7 @@ internal fun Parameter.requestParamName(): String {
 }
 
 /**
- * Retrieves the name of the [RequestHeader] annotation for this [Parameter],
- * falling back to the parameter name if necessary.
- *
- * The function checks the following in order:
- * 1. The `name` property of the [RequestHeader] annotation.
- * 2. The `value` property of the [RequestHeader] annotation.
- * 3. The parameter's declared name.
- *
- * @receiver The [Parameter] from which to extract the request header name.
- * @return The first non-blank name found from the [RequestHeader] annotation or the parameter itself.
+ * Returns the effective header name: `@RequestHeader.name`, then `.value`, then the parameter's declared name.
  */
 internal fun Parameter.requestHeaderName(): String {
 	val annotation = getAnnotation(RequestHeader::class.java)
@@ -49,16 +31,7 @@ internal fun Parameter.requestHeaderName(): String {
 }
 
 /**
- * Retrieves the name of the [PathVariable] annotation for this [Parameter],
- * falling back to the parameter name if necessary.
- *
- * The function checks the following in order:
- * 1. The `name` property of the [PathVariable] annotation.
- * 2. The `value` property of the [PathVariable] annotation.
- * 3. The parameter's declared name.
- *
- * @receiver The [Parameter] from which to extract the path variable name.
- * @return The first non-blank name found from the [PathVariable] annotation or the parameter itself.
+ * Returns the effective path-variable name: `@PathVariable.name`, then `.value`, then the parameter's declared name.
  */
 internal fun Parameter.pathVariableName(): String {
 	val annotation = getAnnotation(PathVariable::class.java)
@@ -68,17 +41,7 @@ internal fun Parameter.pathVariableName(): String {
 		?: this.name
 }
 
-/**
- * Retrieves the name of a request body field represented by this [Field],
- * considering the [JsonProperty] annotation if present.
- *
- * The function checks the following in order:
- * 1. The `value` property of the [JsonProperty] annotation.
- * 2. The field's declared name.
- *
- * @receiver The [Field] from which to extract the request body field name.
- * @return The first non-blank name found from the [JsonProperty] annotation or the field itself.
- */
+/** Returns the [JsonProperty] value if present on this field, otherwise the field's declared name. */
 internal fun Field.bodyFieldName(): String {
 	val annotation = getAnnotation(JsonProperty::class.java)
 	
@@ -87,20 +50,8 @@ internal fun Field.bodyFieldName(): String {
 }
 
 /**
- * Generates a unique identifier for this Java/Kotlin method.
- *
- * The identifier is composed of:
- * 1. Fully qualified class name
- * 2. Method name
- * 3. Parameter types
- *
- * Uses `#` to separate the class and method for clarity.
- * Ensures uniqueness even for overloaded methods within the same class.
- *
- * Example output: `com.example.MyController#getUser(String,int)`
- *
- * @receiver The `Method` instance to generate the identifier for.
- * @return A unique, human-readable identifier for the method.
+ * Returns a unique method identifier in the form `com.example.MyController#getUser(String,int)`.
+ * Distinguishes overloads by including parameter types.
  */
 internal fun Method.getUniqueIdentifier(): String {
 	val clazz = this.declaringClass.name

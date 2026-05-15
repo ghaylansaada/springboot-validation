@@ -1,25 +1,21 @@
 package io.ghaylan.springboot.validation.constraints
 
-import io.ghaylan.springboot.validation.constraints.message.MessageMetadata
 import kotlin.reflect.KClass
 
 /**
- * Abstract class representing metadata for a validation constraint.
+ * Immutable configuration extracted from a constraint annotation at schema-build time.
  *
- * Extending of this class encapsulate the immutable configuration
- * data extracted from a specific constraint annotation.
+ * Subclasses mirror the properties of their corresponding annotation; property names must
+ * match exactly so [ConstraintConverter] can map annotation values via reflection.
  *
- * This unified class enables the validation framework to treat
- * different constraint metadata types generically.
- *
- * @property groups
- *   The set of validation groups this constraint belongs to.
- *   Constraints without groups are always active; otherwise,
- *   they are validated conditionally based on the active group(s).
+ * @property groups Active groups; empty means always validate.
+ * @property message Optional override for the validator's default error message.
+ * @property appliesToContainer Set to `true` for constraints that target the collection/array
+ *           itself (e.g., `@ArraySize`, `@Distinct`) rather than individual elements.
  */
 abstract class ConstraintMetadata {
 	
 	abstract val groups: Set<KClass<*>>
-	abstract val messages: Set<MessageMetadata>
-	val appliesToContainer: Boolean = false
+	abstract val message: String
+	open val appliesToContainer: Boolean = false
 }

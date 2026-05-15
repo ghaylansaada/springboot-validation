@@ -3,34 +3,25 @@ package io.ghaylan.springboot.validation.model
 import io.ghaylan.springboot.validation.model.errors.ApiError.ErrorLocation
 import io.ghaylan.springboot.validation.schema.RequestInputSchema.PropertySpec
 import io.ghaylan.springboot.validation.utils.ReflectionUtils.TypeInfo
-import java.util.*
 import kotlin.reflect.KClass
 
 /**
- * Encapsulates metadata and contextual information needed during validation of a request structure.
+ * Contextual state passed through the validation chain for a single field.
  *
- * This context is passed through the validation chain to support advanced validation features such as:
- * - Localized error messages.
- * - Conditional validation based on active validation groups.
- * - Cross-field and cross-structure rules (e.g., sibling property dependencies, list uniqueness).
- * - Short-circuiting on first error (fail-fast behavior).
+ * Carries the field path, active groups, error accumulation policy, and references
+ * to the parent object and array for cross-field/cross-element validation.
  *
- * It supports recursive schema traversal and is designed to validate both individual fields and structured collections.
- *
- * @property fieldPath Full dot-separated path from the root object to the current property (e.g., "user.address.city").
- * @property fieldName Simple name of the field being validated (e.g., "city").
- * @property location HTTP section where the field appears (e.g., BODY, QUERY, PATH); used for precise error reporting.
- * @property locale Locale used to resolve internationalized error messages.
- * @property stopOnFirstError When true, validation stops on the first constraint violation for this field.
- * @property groups Active validation groups (e.g., Create, Update); determines which constraints apply.
+ * @property fieldPath Dot/bracket path from root (e.g., `"user.address[0].city"`).
+ * @property fieldName Simple name of the current field.
+ * @property location HTTP section (BODY, QUERY, HEADER, PATH) for error tagging.
+ * @property stopOnFirstError When true, stops at the first violation for this field.
+ * @property groups Active validation groups that determine which constraints apply.
  */
 data class ValidationContext(
 	val fieldPath: String,
 	val fieldName: String,
 	val type: TypeInfo?,
 	val location: ErrorLocation,
-	val locale: Locale,
-	val language: String,
 	val stopOnFirstError: Boolean,
 	val groups: Set<KClass<*>>,
 	
@@ -66,13 +57,11 @@ data class ValidationContext(
 )
 
 /**
- * Wraps a validated value with its schema and type info, enabling rule lookups and structure inspection.
+ * Wraps a value with its schema and type info for cross-field/cross-element rule lookups.
  *
- * Used by [ValidationContext] to carry metadata for parent arrays, current objects, and nested arrays.
- *
- * @property value Actual runtime value being validated (e.g., list of items, DTO, primitive).
- * @property schema Schema definition for the object or collection, usually derived from input schema configuration.
- * @property type Resolved type metadata, including raw class and generic info (used for reflective analysis).
+ * @property value Runtime value (e.g., a DTO instance or normalized list of array elements).
+ * @property schema Property specs describing the value's fields or elements.
+ * @property type Resolved type metadata for the value.
  */
 data class ValidationContextValue<T>(
 	val value: T?,

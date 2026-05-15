@@ -1,31 +1,14 @@
 package io.ghaylan.springboot.validation.constraints.validators.array.distinct
 
 import io.ghaylan.springboot.validation.constraints.ConstraintValidator
-import io.ghaylan.springboot.validation.model.ValidationContext
-import io.ghaylan.springboot.validation.model.errors.ApiErrorCode
 import io.ghaylan.springboot.validation.constraints.annotations.Distinct.DistinctMode
+import io.ghaylan.springboot.validation.model.ValidationContext
 import io.ghaylan.springboot.validation.model.errors.ApiError
+import io.ghaylan.springboot.validation.model.errors.ApiErrorCode
 
 /**
- * Validates the `@Distinct` constraint, ensuring all elements in a collection or array are unique.
- *
- * ### Description
- * The `DistinctValidator` enforces the `@Distinct` constraint by checking for duplicate elements in collections, arrays, or specific fields within objects. It supports scalar types, objects, and maps, with validation performed efficiently using cached `FieldAccessor`s. The validator adapts its behavior based on the presence of the `by` parameter and the `mode` setting in the `@Distinct` annotation.
- *
- * ### Supported types
- * - Collections or arrays of scalar types (e.g., `List<Int>`, `Array<String>`)
- * - Collections or arrays of objects (e.g., `List<User>`, `Array<Map<String, Any>>`)
- * - Fields within objects inside a parent collection (e.g., `email: String` in `List<User>`)
- *
- * ### Validation steps
- * - For collections or arrays, checks if the value is a collection; if not, delegates to parent context.
- * - If the collection is empty, considers it valid.
- * - For scalar collections, compares elements using `equals()` to detect duplicates.
- * - For objects or maps with specified `by` fields:
- *   - In `PER_FIELD` mode, ensures each field's values are unique across all elements.
- *   - In `COMBINATION` mode, ensures the combination of values from all specified fields is unique.
- * - Uses `FieldAccessor`s to retrieve field values without runtime reflection.
- * - Returns an error if duplicates are found, with appropriate multilingual error messages.
+ * Enforces the `@Distinct` constraint by detecting duplicates in a collection via the parent
+ * [ValidationContext.array] context. Dispatches to scalar, map, or object strategies based on array element type.
  */
 object DistinctValidator : ConstraintValidator<Any, DistinctConstraint>()
 {
@@ -38,10 +21,9 @@ object DistinctValidator : ConstraintValidator<Any, DistinctConstraint>()
     {
         value ?: return null
 
-        // Skip validation for collections, as it’s handled item-by-item
+        // The constraint operates on the containing array, not individual elements; skip when iterating.
         if (context.type?.isArray == true) return null
 
-        // Skip validation if the parent array is empty
         val arrayValue = context.array?.value?.takeUnless {
             it.isEmpty()
         } ?: return null

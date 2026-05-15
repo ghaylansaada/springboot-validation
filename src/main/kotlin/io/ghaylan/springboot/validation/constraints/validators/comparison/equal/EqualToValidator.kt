@@ -1,21 +1,20 @@
 package io.ghaylan.springboot.validation.constraints.validators.comparison.equal
 
 import io.ghaylan.springboot.validation.constraints.ConstraintValidator
-import io.ghaylan.springboot.validation.constraints.validators.comparison.lessthan.LessThanConstraint
 import io.ghaylan.springboot.validation.model.ValidationContext
 import io.ghaylan.springboot.validation.model.errors.ApiError
 import io.ghaylan.springboot.validation.model.errors.ApiErrorCode
 
 
-object EqualToValidator: ConstraintValidator<Comparable<*>, LessThanConstraint>() {
-	
+object EqualToValidator: ConstraintValidator<Comparable<*>, EqualToConstraint>() {
+
 	override suspend fun validate(
 		value: Comparable<*>?,
-		constraint: LessThanConstraint,
+		constraint: EqualToConstraint,
 		context: ValidationContext
 	): ApiError? {
-		value
-			?: return null
+		value ?: return null
+		
 		val otherValue = super.getPropertyValue(name = constraint.property, context = context)
 		
 		if (otherValue != null) {

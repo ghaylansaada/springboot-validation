@@ -27,65 +27,13 @@ import java.lang.reflect.Parameter
 import kotlin.reflect.KClass
 
 /**
- * `ValidationSchemaBuilder` serves as the core utility for generating validation schemas in a custom validation
- * framework tailored for Spring-based web applications. It analyzes controller methods and DTO structures to
- * create structured [RequestInputSchema] objects that encapsulate validation rules for various HTTP request inputs.
+ * Generates validation schemas by analyzing controller methods and DTO structures.
  *
- * The builder supports two primary modes of operation to accommodate different use cases:
+ * Two modes:
+ * - **Static** ([generateStaticSchemas]): scans `@ValidateInput` methods at startup.
+ * - **Dynamic** ([generateSchemaForType]): generates schemas on demand for arbitrary classes.
  *
- * - **Static Schema Generation** (via [generateStaticSchemas]): Performed at application startup by scanning
- *   controller methods annotated with [@ValidateInput]. This produces precomputed, reusable schemas for efficient
- *   runtime validation without repeated reflection. Ideal for standard API endpoints where performance is critical.
- *
- * - **Dynamic Schema Generation** (via [generateSchemaForType]): Executed on-demand for arbitrary classes, such as
- *   user-uploaded DTOs, external payloads, or admin-configured data models. This enables flexible validation in
- *   scenarios where structures are not known at compile-time or startup.
- *
- * ## Business Logic Overview
- * The schema generation process is driven by the following key principles:
- * - **Input Type Support**: Validates `@RequestHeader`, `@RequestParam`, `@PathVariable`, and a single `@RequestBody`
- *   per method. Non-annotated parameters are ignored.
- * - **Deep, Recursive Validation**: Supports nested objects, collections, arrays, and maps with cycle detection to
- *   prevent infinite recursion in self-referential structures.
- * - **Constraint Resolution and Matching**: Constraints (annotated with [@Constraint]) are converted to metadata and
- *   paired with compatible [ConstraintValidator]s based on type compatibility rules (exact matches, supertypes,
- *   wildcards, and container-specific handling).
- * - **Fail-Fast Optimization**: Required constraints (e.g., [@Required]) are prioritized in ordering to short-circuit
- *   validation on missing fields.
- * - **Inheritance and Delegation**: Parent-level constraints (e.g., [@Distinct] on collections) are selectively
- *   delegated to child elements or fields when applicable (e.g., for arrays/collections of objects/maps).
- * - **Accessor Integration**: Uses [AccessorRegistry] to provide property accessors for runtime value extraction.
- * - **Type-Aware Flexibility**: Handles generics, wildcards, and container types with specialized compatibility checks.
- *
- * ## Key Features
- * - Automatic constraint prioritization for efficient validation.
- * - Support for complex types including arrays, collections, and maps with element-level validation.
- * - Built-in cycle detection using a visited set during recursive field analysis.
- * - Strict validation of request bodies (only one per method allowed).
- * - Configurable validation scopes via [@ValidateInput] (e.g., enable/disable body, query, headers, or paths).
- *
- * ## Usage Examples
- *
- * ### Static Generation (Startup-Time)
- * ```kotlin
- * val schemas = ValidationSchemaBuilder.generateStaticSchemas(applicationContext, validatorRegistry)
- * // Cache the map and retrieve schemas by request ID during incoming requests for validation
- * ```
- *
- * ### Dynamic Generation (Runtime)
- * ```kotlin
- * val (typeInfo, schema) = ValidationSchemaBuilder.generateSchemaForType(MyDynamicDto::class.java, validatorRegistry)
- *     ?: error("Invalid type for validation")
- * // Apply the schema to validate arbitrary objects, e.g., from uploads or integrations
- * ```
- *
- * ## Integration Considerations
- * - Relies on utilities like [ReflectionUtils] for type introspection, [AccessorRegistry] for property access,
- *   and [ValidatedMethodFinder] for discovering annotated methods.
- * - Validators must be registered in a map keyed by constraint metadata class and supported [TypeInfo].
- * - Constraints on container types (e.g., lists) may propagate to elements if the elements are object-like.
- * - For performance, prefer static schemas for fixed endpoints; use dynamic only for variable or external structures.
- * - Errors (e.g., multiple `@RequestBody`s) are thrown during schema generation to fail early.
+ * Handles recursive fields, cycle detection, constraint-to-validator matching, and accessor resolution.
  */
 object ValidationSchemaBuilder
 {
@@ -191,15 +139,7 @@ object ValidationSchemaBuilder
     }
 
 
-    /**
-     * Extracts validation settings from the given [ValidateInput] annotation.
-     *
-     * This builds a [ValidationConfig] based on the
-     * properties defined in the annotation.
-     *
-     * @param annotation The [ValidateInput] annotation to convert into a validation configuration.
-     * @return The extracted [ValidationConfig].
-     */
+    /** Converts a [ValidateInput] annotation into its [ValidationConfig] counterpart. */
     private fun getValidationConfig(annotation : ValidateInput) : ValidationConfig
     {
         return ValidationConfig(
@@ -213,17 +153,8 @@ object ValidationSchemaBuilder
 
 
     /**
-     * Builds validation metadata for request headers, query parameters, or path variables.
-     *
-     * Scans method parameters annotated with the given annotation type and builds corresponding
-     * [PropertySpec] for each parameter, resolving validators and accessor methods.
-     *
-     * @param annotationClass The Spring annotation type to filter (e.g., [RequestHeader], [RequestParam], [PathVariable]).
-     * @param parameters The parameters of the controller method.
-     * @param allValidators A registry of all available validators.
-     * @param nameResolver A function that resolves the name of the field (e.g., from annotation or parameter name).
-     *
-     * @return A map of logical field names to their validation specifications ([PropertySpec]).
+     * Builds [PropertySpec] entries for flat request sections (headers, query params, path variables).
+     * Filters parameters by [annotationClass] and resolves each name via [nameResolver].
      */
     private fun buildNonRequestBodySchema(
         annotationClass : KClass<out Annotation>,
@@ -252,18 +183,10 @@ object ValidationSchemaBuilder
 
 
     /**
-     * Builds validation specifications for the `@RequestBody` parameter of a method.
+     * Resolves the `@RequestBody` parameter and returns its [TypeInfo] paired with field schemas,
+     * or `null` if no `@RequestBody` parameter is present.
      *
-     * @param method The controller method being analyzed.
-     * @param parameters The list of method parameters.
-     * @param allValidators The full registry of validators.
-     *
-     * @return A [Pair] containing:
-     *   - [TypeInfo] representing the structure of the request body.
-     *   - A map of field names to their corresponding [PropertySpec].
-     *   Returns `null` if no `@RequestBody` is found.
-     *
-     * @throws IllegalStateException If more than one `@RequestBody` is found (which is not allowed).
+     * @throws IllegalStateException if more than one `@RequestBody` parameter is found.
      */
     private fun buildRequestBodySchema(
         method : Method,
@@ -289,23 +212,11 @@ object ValidationSchemaBuilder
 
 
     /**
-     * Recursively builds validation specifications for all object-like fields in a class.
+     * Recursively inspects [clazz] and produces a [PropertySpec] for each non-synthetic, non-static,
+     * non-transient field. Cycle detection via [visited] prevents infinite recursion on self-referential graphs.
      *
-     * This function inspects the fields of a class and constructs a [PropertySpec] for each field,
-     * including nested fields for object-like or container types. It filters out synthetic, static,
-     * or transient fields and resolves applicable constraints using the provided validator registry.
-     *
-     * To prevent infinite recursion in cyclic object graphs, already-visited classes are tracked.
-     *
-     * Special handling:
-     * - For array or collection types of objects or maps, constraints can be delegated to their elements.
-     * - Parent-level constraints (e.g., `DistinctConstraint`) are applied to relevant child fields.
-     *
-     * @param clazz The class whose fields will be inspected.
-     * @param parentConstraints Constraints inherited from parent context (optional, default = empty).
-     * @param allValidators Registry of all known constraint validators.
-     * @param visited A set of classes already visited to prevent cycles (optional, default = empty set).
-     * @return A map of field names to [PropertySpec], or `null` if the class is non-object-like or already visited.
+     * @param parentConstraints Container-level constraints (e.g., `@Distinct`) propagated to child fields.
+     * @return Field-name-to-spec map, or `null` when [clazz] is non-object-like or already visited.
      */
     private fun buildClassFields(
         clazz: Class<*>,
@@ -326,27 +237,22 @@ object ValidationSchemaBuilder
 
                 val resolvedName = field.bodyFieldName()
 
-                // Obtain the TypeInfo for this field
                 val type = ReflectionUtils.infoFromField(field)
 
-                // Resolve constraints declared on this field
                 val constraints = filterConstraints(
                     valueType = type,
                     annotations = field.annotations,
                     allValidators = allValidators)
 
-                // Recursively build validation specs for nested object fields.
-                // If the field is an array, list, or map of objects, delegate parent constraints to its elements
+                // For array/list/map fields, pass their constraints down so element-level validators
+                // (e.g., @Distinct) can access the parent container's schema.
                 val nested = buildClassFields(
-                    // The type of the current field to browse its fields
                     clazz = type.resolveType.java,
-                    // If the current field is a list of non-scalar elements, delegate its constraints to its elements.
                     parentConstraints = if (type.isArrayOfArrays || type.isArrayOfObjects || type.isArrayOfMaps) constraints else emptyMap(),
                     allValidators = allValidators,
                     visited = visited
                 ) ?: emptyMap()
 
-                // Merge any parent-level constraints that apply to this field
                 val localParentConstraints = parentConstraints.filter {
                     val constraint = it.key
                     constraint is DistinctConstraint && constraint.by.contains(resolvedName)
@@ -364,37 +270,7 @@ object ValidationSchemaBuilder
 
 
     /**
-     * Extracts and resolves all applicable constraint annotations for a given value type, returning a map
-     * of [ConstraintMetadata] to the corresponding [ConstraintValidator] instances.
-     *
-     * This method performs the following steps:
-     *
-     * 1. **Resolves constraint annotations into metadata:**
-     *    Annotations that are meta-annotated with `@Constraint` are converted into [ConstraintMetadata] via
-     *    the `convertToMetadata()` extension.
-     *
-     * 2. **Finds the best validator for each constraint:**
-     *    For each included constraint, the most compatible [ConstraintValidator] is selected based on the
-     *    type of the field or parameter being validated (`valueType`). This includes:
-     *    - Exact type match
-     *    - Assignable supertype with matching generic arguments
-     *    - Wildcard support (e.g., `Any`, wildcard collections, etc.)
-     *
-     * 3. **Prioritizes required constraints:**
-     *    Constraints that enforce presence (such as [RequiredConstraint]) are sorted to appear
-     *    first in the resulting map to support fail-fast behavior—stopping validation early if the field is missing.
-     *
-     * 4. **Returns a deterministic, ordered map:**
-     *    A [LinkedHashMap] is used to preserve the insertion order of constraints, ensuring consistent validation behavior.
-     *
-     * @param valueType The [TypeInfo] representing the type of the field or method parameter being validated.
-     * @param annotations The list of annotations declared on the field or parameter.
-     * @param allValidators A map of available validators grouped by constraint type and supported [TypeInfo].
-     *
-     * @return A [LinkedHashMap] of resolved [ConstraintMetadata] to their corresponding [ConstraintValidator]s,
-     *         ordered with required constraints first.
-     *
-     * @throws IllegalStateException If no compatible validator is found for a constraint.
+     * Resolves constraint annotations into metadata + validator pairs, ordered with `@Required` first.
      */
     private fun filterConstraints(
         valueType : TypeInfo,
@@ -446,80 +322,10 @@ object ValidationSchemaBuilder
 
 
     /**
-     * Determines whether a given validator's supported type is compatible with the actual type being validated.
+     * Checks if a validator’s type signature is compatible with the value’s type.
      *
-     * Compatibility is determined using the following strategies (evaluated in order):
-     *
-     * 1. **Exact Match (including generic arguments):**
-     *    - The concrete types must be equal.
-     *    - All corresponding generic type arguments must match exactly, or be wildcards in the validator.
-     *
-     *    ✅ Examples:
-     *      - `value = List<String>`,     validator = `List<String>` → true
-     *      - `value = List<String>`,     validator = `List<*>`      → true
-     *      - `value = Map<String, Int>`, validator = `Map<*, *>`    → true
-     *      - `value = Array<String>`,    validator = `Array<String>` → true
-     *
-     *    ❌ Examples:
-     *      - `value = List<String>`,     validator = `List<Int>`     → false
-     *      - `value = Array<String>`,    validator = `Array<Any>`    → false
-     *
-     * 2. **Assignable Supertype Match (with type argument compatibility):**
-     *    - The validator’s concrete type must be a supertype of the value’s.
-     *    - Type arguments must match exactly or be wildcards in the validator.
-     *
-     *    ✅ Examples:
-     *      - `value = ArrayList<String>`,          validator = `List<*>`       → true
-     *      - `value = LinkedHashMap<String, Int>`, validator = `Map<*, *>`     → true
-     *
-     *    ❌ Examples:
-     *      - `value = ArrayList<String>`, validator = `Collection<Int>` → false
-     *
-     * 3. **Validator Accepts Any:**
-     *    - If the validator’s concrete type is `Any`, it matches any value type.
-     *
-     *    ✅ Examples:
-     *      - `value = String`, validator = `Any` → true
-     *      - `value = List<Int>`, validator = `Any` → true
-     *
-     * 4. **Wildcard Map Match:**
-     *    - Validator must be a map type (`Map<*, *>`) with wildcard key and value types.
-     *    - Value must also be a map type.
-     *
-     *    ✅ Example:
-     *      - `value = HashMap<String, Int>`, validator = `Map<*, *>` → true
-     *
-     *    ❌ Example:
-     *      - `value = List<String>`, validator = `Map<*, *>` → false
-     *
-     * 5. **Array Match:**
-     *    - Both value and validator must be arrays.
-     *    - If the validator’s element type is `Any`, all arrays are accepted.
-     *    - If the validator’s element type is a map, arrays of maps are also accepted.
-     *    - Otherwise, element types must match exactly.
-     *
-     *    ✅ Examples:
-     *      - `value = Array<String>`, validator = `Array<Any>` → true
-     *      - `value = Array<Map<String, Int>>`, validator = `Array<Map<*, *>>` → true
-     *      - `value = Array<Int>`, validator = `Array<Int>` → true
-     *
-     *    ❌ Examples:
-     *      - `value = Array<String>`, validator = `Array<Int>` → false
-     *
-     * 6. **Wildcard Collection Match:**
-     *    - Validator must be a collection type (`List`, `Set`, etc.) with all wildcard type arguments.
-     *    - Value must also be a collection type.
-     *
-     *    ✅ Examples:
-     *      - `value = ArrayList<Int>`, validator = `List<*>` → true
-     *      - `value = HashSet<String>`, validator = `Collection<*>` → true
-     *
-     *    ❌ Examples:
-     *      - `value = Map<String, String>`, validator = `List<*>` → false
-     *
-     * @param value The actual [TypeInfo] of the value being validated (e.g., `List<String>`, `Array<Int>`, etc.).
-     * @param validator The [TypeInfo] representing the validator's supported type signature.
-     * @return `true` if the validator is compatible with the value type, `false` otherwise.
+     * Evaluated in order: exact match, primitive/boxed, numeric, Comparable, Any wildcard,
+     * supertype, wildcard map, array element match, wildcard collection.
      */
     private fun isValidatorCompatible(
         value: TypeInfo,

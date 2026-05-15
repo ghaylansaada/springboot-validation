@@ -20,8 +20,8 @@ object ValueInValidator: ConstraintValidator<Any, ValueInConstraint>() {
 		if (!ReflectionUtils.isScalar(value)) return null
 		val asString = value.toString()
 		
-		if (asString !in constraint.values) return null
-		
+		if (asString in constraint.values) return null
+
 		return ApiError(code = ApiErrorCode.ALLOWED_VALUE_VIOLATION, message = "Must be one of the following values: ${constraint.values}")
 	}
 	

@@ -20,8 +20,8 @@ object ValueNotInValidator: ConstraintValidator<Any, ValueNotInConstraint>() {
 		if (!ReflectionUtils.isScalar(value)) return null
 		val asString = value.toString()
 		
-		if (asString in constraint.values) return null
-		
+		if (asString !in constraint.values) return null
+
 		return ApiError(code = ApiErrorCode.DISALLOWED_VALUE_VIOLATION, message = "Must not be one of the following values: ${constraint.values}")
 	}
 	

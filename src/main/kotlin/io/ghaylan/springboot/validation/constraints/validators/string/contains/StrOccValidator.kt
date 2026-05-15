@@ -14,8 +14,7 @@ object StrOccValidator: ConstraintValidator<CharSequence, StrOccConstraint>() {
 		constraint: StrOccConstraint,
 		context: ValidationContext
 	): ApiError? {
-		value
-			?: return null
+		value ?: return null
 		val errorMessage = StringBuilder()
 		
 		when (constraint.mode) {
@@ -37,6 +36,7 @@ object StrOccValidator: ConstraintValidator<CharSequence, StrOccConstraint>() {
 			
 			else -> return null
 		}
+		
 		val occurrences = countOccurrences(text = value.toString(), sub = constraint.value, ignoreCase = constraint.ignoreCase)
 		
 		if (occurrences !in constraint.minOccurrences..constraint.maxOccurrences) {

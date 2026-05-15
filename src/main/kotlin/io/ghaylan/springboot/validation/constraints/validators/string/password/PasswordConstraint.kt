@@ -2,9 +2,9 @@ package io.ghaylan.springboot.validation.constraints.validators.string.password
 
 import io.ghaylan.springboot.validation.constraints.ConstraintMetadata
 import io.ghaylan.springboot.validation.constraints.annotations.Password.PasswordStrength
-import io.ghaylan.springboot.validation.constraints.message.MessageMetadata
 import kotlin.reflect.KClass
 
+/** Constraint metadata for [@Password][io.ghaylan.springboot.validation.constraints.annotations.Password]. */
 data class PasswordConstraint(
 	val minLength: Int,
 	val maxLength: Int,
@@ -17,5 +17,5 @@ data class PasswordConstraint(
 	val noSequentialChars: Boolean,
 	val noRepetitivePatterns: Boolean,
 	override val groups: Set<KClass<*>>,
-	override val messages: Set<MessageMetadata>
+	override val message: String
 ): ConstraintMetadata()

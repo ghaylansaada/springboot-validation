@@ -1,16 +1,4 @@
 package io.ghaylan.springboot.validation.groups
 
-/**
- * Marker interface for the **Update** validation group.
- *
- * Use this group to associate constraints that should only apply when
- * **updating** a resource or entity.
- *
- * **Example:**
- * ```kotlin
- * @PutMapping("/users/{id}")
- * @ValidateInput(groups = [OnUpdate::class])
- * fun updateUser(@RequestBody dto: UserDTO)
- * ```
- */
+/** Validation group for update operations; constraints in this group are skipped during creates. */
 interface OnUpdate

@@ -178,7 +178,8 @@ object ReflectionUtils {
         return type.isArray || Collection::class.java.isAssignableFrom(type)
     }
 	
-	
+
+	/** Returns `true` if [value] is any array or collection type (including primitive arrays). */
 	fun isCollection(value: Any): Boolean {
         return value is Array<*>
                 || value is Collection<*>
@@ -192,7 +193,9 @@ object ReflectionUtils {
                 || value is DoubleArray
     }
 	
-	
+
+
+	/** Returns `true` if [value] is a scalar (string, char, number, temporal, boolean, enum, or Date). */
 	fun isScalar(value: Any): Boolean {
         return value is CharSequence
                 || value is Char
@@ -437,7 +440,7 @@ object ReflectionUtils {
             type in arrayOf(LocalTime::class, OffsetTime::class) -> {
                 TypeKind.TIME
             }
-            type in arrayOf(Date::class, LocalDateTime::class, ZonedDateTime::class, OffsetTime::class, Instant::class) -> {
+            type in arrayOf(Date::class, LocalDateTime::class, ZonedDateTime::class, Instant::class) -> {
                 TypeKind.DATETIME
             }
             type in setOf(Int::class, Long::class, Short::class, BigInteger::class) -> {
@@ -603,17 +606,7 @@ object ReflectionUtils {
     }
 
 
-    /**
-     * Enumeration of type categories used in [TypeInfo].
-     *
-     * Supports all major JVM/Kotlin types, including:
-     * - Primitives and boxed values
-     * - Arrays and collections
-     * - Strings, Enums, Maps
-     * - Temporal types (date/time)
-     * - Custom objects and DTOs
-     * - Multilingual placeholders (custom logic)
-     */
+    /** Classification of JVM/Kotlin types used in [TypeInfo] for schema-driven validation. */
     enum class TypeKind(val isScalar : Boolean, val isArray : Boolean)
     {
         BOOLEAN(isScalar = true, isArray = false),
